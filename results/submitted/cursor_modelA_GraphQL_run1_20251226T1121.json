@@ -1,0 +1,73 @@
+{
+  "schema_version": "2.0",
+  "result_data": {
+    "run_identity": {
+      "tool_name": "cursor",
+      "tool_version": "2.2.43",
+      "run_id": "cursor-ModelA-20251226T1121",
+      "run_number": 1,
+      "target_model": "A",
+      "api_style": "GraphQL",
+      "spec_reference": "v2.7.0",
+      "workspace_path": "/Users/scott.dickerson/source/repos/pawmate-ai-challenge/runs/20251226T1121/PawMate",
+      "run_environment": "Darwin 24.6.0"
+    },
+    "implementations": {
+      "api": {
+        "generation_metrics": {
+          "llm_model": "ClaudeSonnet4.5",
+          "start_timestamp": "-**generation_started:**2025-12-26T17:33:15.482Z",
+          "end_timestamp": "-**all_tests_pass:**2025-12-26T17:27:15.000Z",
+          "duration_minutes": 0,
+          "clarifications_count": 0,
+          "interventions_count": 0,
+          "reruns_count": 0,
+          "test_runs": [],
+          "test_iterations_count": null,
+          "llm_usage": null
+        },
+        "acceptance": {
+          "pass_count": 0,
+          "fail_count": 0,
+          "not_run_count": 0,
+          "passrate": 0.0
+        },
+        "artifacts": {
+          "contract_artifact_path": "",
+          "run_instructions_path": "/Users/scott.dickerson/source/repos/pawmate-ai-challenge/runs/20251226T1121/PawMate/benchmark/run_instructions.md",
+          "source_code_path": "",
+          "acceptance_checklist_path": "/Users/scott.dickerson/source/repos/pawmate-ai-challenge/runs/20251226T1121/PawMate/benchmark/acceptance_checklist.md",
+          "acceptance_evidence_path": "",
+          "determinism_evidence_path": "",
+          "overreach_evidence_path": "",
+          "ai_run_report_path": "/Users/scott.dickerson/source/repos/pawmate-ai-challenge/runs/20251226T1121/PawMate/benchmark/ai_run_report.md",
+          "automated_tests_path": ""
+        }
+      },
+      "ui": {
+        "generation_metrics": {
+          "llm_model": "Unknown",
+          "start_timestamp": "12.345Z",
+          "end_timestamp": "00.000Z",
+          "duration_minutes": 0,
+          "clarifications_count": 0,
+          "interventions_count": 0,
+          "reruns_count": 0,
+          "backend_changes_required": false,
+          "llm_usage": null
+        },
+        "build_success": true,
+        "artifacts": {
+          "ui_source_path": "/Users/scott.dickerson/source/repos/pawmate-ai-challenge/runs/20251226T1121/PawMate/ui",
+          "ui_run_summary_path": "/Users/scott.dickerson/source/repos/pawmate-ai-challenge/runs/20251226T1121/PawMate/benchmark/ui_run_summary.md",
+          "run_instructions_path": "/Users/scott.dickerson/source/repos/pawmate-ai-challenge/runs/20251226T1121/PawMate/benchmark/run_instructions.md"
+        }
+      }
+    },
+    "submission": {
+      "submitted_timestamp": "2025-12-26T18:13:57.000Z",
+      "submitted_by": "Scott Dickerson",
+      "submission_method": "automated"
+    }
+  }
+}

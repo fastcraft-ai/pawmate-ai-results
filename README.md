@@ -14,16 +14,40 @@ This repository is separate from the main `pawmate-ai-challenge` repository to m
 ```
 pawmate-ai-results/
 ├── scripts/
-│   ├── aggregate_results.py       # Generate HTML comparison reports from result files
-│   ├── generate_dashboard.py       # Generate dashboard visualizations
-│   └── validate_result.sh         # Validate result files against schema
+│   ├── aggregate_results.py          # Generate HTML comparison reports from result files
+│   ├── generate_dashboard.py          # Generate dashboard visualizations
+│   ├── validate_result.sh            # Validate result files against schema
+│   └── process_emailed_result.sh     # Process result files received via email
 ├── schemas/
 │   └── result-schema-v2.0-proposed.json  # JSON schema for result files
+├── results/
+│   ├── submitted/                    # Result files submitted by developers
+│   └── compiled/                     # Generated comparison reports
 └── docs/
     └── Comparison_Report_Template.md      # Template for manual comparison reports
 ```
 
 ## Usage
+
+### Processing Emailed Results (For Maintainers)
+
+External developers submit results via email. To process received result files:
+
+```bash
+# Quick process: copy to submitted/ and validate
+./scripts/process_emailed_result.sh ~/Downloads/result_file.json
+
+# Copy, validate, and run aggregation
+./scripts/process_emailed_result.sh ~/Downloads/result_file.json --aggregate
+
+# Copy only (no validation or aggregation)
+./scripts/process_emailed_result.sh ~/Downloads/result_file.json --copy-only
+```
+
+The script will:
+1. Copy the result file to `results/submitted/`
+2. Validate the file (optional)
+3. Run aggregation to update comparison reports (optional)
 
 ### Aggregating Results
 
@@ -70,21 +94,52 @@ The comparison reports focus on **automated, measurable metrics**:
 
 ## Integration with Challenge Repository
 
-Result files are generated in the `pawmate-ai-challenge` repository using `scripts/generate_result_file.sh`. Once generated, result files can be:
+Result files are generated in the `pawmate-ai-challenge` repository using `scripts/generate_result_file.sh`.
 
-1. Submitted to this repository (via PR or direct commit)
-2. Processed using the aggregation scripts in this repository
-3. Included in comparison reports
+### Submission Workflow
+
+**For external developers** (recommended):
+1. Generate result file in `pawmate-ai-challenge`
+2. Run `./scripts/submit_result.sh` in `pawmate-ai-challenge`
+3. Email is sent with result file attachment
+4. Maintainer receives email and processes result using `./scripts/process_emailed_result.sh`
+
+**For maintainers with repo access**:
+1. Generate result file in `pawmate-ai-challenge`
+2. Copy file to `results/submitted/` in this repo
+3. Commit and push directly (or create PR)
+
+### Result Processing
+
+Once result files are in `results/submitted/`:
+1. Validate using `./scripts/validate_result.sh`
+2. Aggregate using `python3 scripts/aggregate_results.py`
+3. Compiled reports are generated in `results/compiled/`
 
 ## Schema Version
 
 The schema version is tracked in each result file. The aggregation scripts only support:
 - **v2.0**: Current schema with separate API/UI implementations, test run tracking, and LLM usage
 
-## Contributing
+## Submitting Results
 
-When adding new result files:
+### For External Developers
+
+Use the submission script in the `pawmate-ai-challenge` repository:
+
+```bash
+# In pawmate-ai-challenge repo
+./scripts/submit_result.sh your-result-file.json
+```
+
+See the [Submitting Results Guide](https://github.com/rsdickerson/pawmate-ai-challenge/blob/main/docs/Submitting_Results.md) in the challenge repository for detailed instructions.
+
+### For Maintainers
+
+When adding result files directly to this repository:
 1. Ensure the file validates against the schema
 2. Follow the naming convention: `{tool-slug}_{model}_{api-type}_{run-number}_{timestamp}.json`
 3. Include complete metrics (use "Unknown" if evidence is missing, per evidence-first rule)
+4. Place files in `results/submitted/`
+5. Run aggregation to update comparison reports
 

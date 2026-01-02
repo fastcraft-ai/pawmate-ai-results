@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-aggregate_results.py — Benchmark results aggregation with v2.0 schema support
+aggregate_results.py — Benchmark results aggregation with v2.0 and v3.0 schema support
 
 Generates HTML reports with:
 - Clear metric names (no cryptic abbreviations)
@@ -14,6 +14,7 @@ Usage:
 """
 
 import argparse
+import csv
 import json
 import os
 import sys
@@ -26,16 +27,20 @@ def detect_schema_version(data: dict) -> str:
     """Detect which schema version is being used."""
     schema_version = data.get('schema_version', '2.0')
     
-    # Only support v2.0 schema
+    # Check for v3.0 schema (explicitly set)
+    if schema_version == '3.0':
+        return '3.0'
+    
+    # Check for v2.0 schema (explicitly set or default)
+    if schema_version == '2.0':
+        return '2.0'
+    
+    # Fallback: if implementations structure exists, assume v2.0 (backward compatibility)
     if 'implementations' in data.get('result_data', {}):
         return '2.0'
     
     # If schema_version is explicitly set to something else, return it (for error reporting)
-    if schema_version != '2.0':
-        return schema_version
-    
-    # Default to 2.0
-    return '2.0'
+    return schema_version
 
 
 def parse_result_file(file_path: Path) -> Optional[dict]:
@@ -56,8 +61,12 @@ def parse_result_file(file_path: Path) -> Optional[dict]:
         return None
 
 
-def extract_metrics_v2(result: dict) -> dict:
-    """Extract metrics from v2.0 schema (separate API/UI)."""
+def extract_metrics(result: dict) -> dict:
+    """Extract metrics from v2.0 or v3.0 schema (separate API/UI).
+    
+    Core structure (run_identity, implementations) is identical between v2.0 and v3.0,
+    so the same extraction logic works for both versions.
+    """
     impls = result['result_data']['implementations']
     
     api_metrics = {}
@@ -126,11 +135,12 @@ def generate_html_report(group_key: Tuple[str, str, str], group_results: List[di
         
         schema_ver = run1.get('_schema_version', '2.0')
         
-        if schema_ver != '2.0':
+        # Support both v2.0 and v3.0 schemas (core structure is identical)
+        if schema_ver not in ['2.0', '3.0']:
             print(f"Warning: Skipping result with unsupported schema version {schema_ver}: {run1.get('_filename', 'unknown')}", file=sys.stderr)
             continue
         
-        metrics = extract_metrics_v2(run1)
+        metrics = extract_metrics(run1)
         
         tool_data.append({
             'name': tool_name,
@@ -345,6 +355,11 @@ def generate_html_content(report_id: str, spec_ref: str, model: str, api_type: s
         
         .badge-v2 {{
             background: #4caf50;
+            color: white;
+        }}
+        
+        .badge-v3 {{
+            background: #2196f3;
             color: white;
         }}
         
@@ -675,8 +690,378 @@ def generate_charts_html(tool_data: List[dict]) -> str:
     return html
 
 
+def extract_csv_data(results: List[dict]) -> List[dict]:
+    """Extract data for CSV export from result files.
+    
+    Extracts specified fields: tool_name, tool_version, target_model, api_style,
+    pass_rate, duration_minutes, llm_model, submission_timestamp.
+    Excludes: test_iterations_count and test_runs details.
+    """
+    csv_rows = []
+    
+    for result in results:
+        try:
+            ri = result['result_data']['run_identity']
+            impls = result['result_data']['implementations']
+            submission = result['result_data']['submission']
+            
+            # Extract run_identity fields
+            tool_name = ri.get('tool_name', '')
+            tool_version = ri.get('tool_version', '')
+            target_model = ri.get('target_model', '')
+            api_style = ri.get('api_style', '')
+            
+            # Extract API implementation metrics (if exists)
+            pass_rate = None
+            duration_minutes = None
+            llm_model = None
+            
+            if 'api' in impls:
+                api = impls['api']
+                gen = api.get('generation_metrics', {})
+                acceptance = api.get('acceptance', {})
+                
+                duration_minutes = gen.get('duration_minutes')
+                llm_model = gen.get('llm_model', '')
+                pass_rate = acceptance.get('passrate')
+            
+            # Extract submission timestamp
+            submission_timestamp = submission.get('submitted_timestamp', '')
+            
+            # Create CSV row
+            csv_row = {
+                'tool_name': tool_name,
+                'tool_version': tool_version,
+                'target_model': target_model,
+                'api_style': api_style,
+                'pass_rate': pass_rate if pass_rate is not None else '',
+                'duration_minutes': duration_minutes if duration_minutes is not None else '',
+                'llm_model': llm_model if llm_model else '',
+                'submission_timestamp': submission_timestamp
+            }
+            
+            csv_rows.append(csv_row)
+            
+        except (KeyError, TypeError) as e:
+            # Skip invalid results, but log warning
+            filename = result.get('_filename', 'unknown')
+            print(f"Warning: Skipping result file {filename} due to missing required fields: {e}", file=sys.stderr)
+            continue
+    
+    return csv_rows
+
+
+def write_csv_export(csv_rows: List[dict], output_path: Path) -> None:
+    """Write CSV export to file.
+    
+    Args:
+        csv_rows: List of dictionaries with CSV data
+        output_path: Path to output CSV file
+    """
+    # Define CSV column order
+    fieldnames = [
+        'tool_name',
+        'tool_version',
+        'target_model',
+        'api_style',
+        'pass_rate',
+        'duration_minutes',
+        'llm_model',
+        'submission_timestamp'
+    ]
+    
+    # Create output directory if it doesn't exist
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    
+    # Write CSV file
+    try:
+        with open(output_path, 'w', newline='', encoding='utf-8') as csvfile:
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames, extrasaction='ignore')
+            
+            # Write header
+            writer.writeheader()
+            
+            # Write data rows
+            for row in csv_rows:
+                # Format numeric values appropriately
+                formatted_row = {}
+                for key, value in row.items():
+                    if key == 'pass_rate' and value != '' and value is not None:
+                        # Format pass_rate as decimal (e.g., 0.957)
+                        try:
+                            formatted_row[key] = f"{float(value):.3f}"
+                        except (ValueError, TypeError):
+                            formatted_row[key] = ''
+                    elif key == 'duration_minutes' and value != '' and value is not None:
+                        # Format duration_minutes with appropriate precision
+                        try:
+                            formatted_row[key] = f"{float(value):.2f}"
+                        except (ValueError, TypeError):
+                            formatted_row[key] = ''
+                    else:
+                        # Keep other values as-is (strings, empty strings)
+                        formatted_row[key] = value if value is not None else ''
+                
+                writer.writerow(formatted_row)
+        
+        print(f"✓ Generated CSV export: {output_path}")
+        
+    except IOError as e:
+        print(f"Error writing CSV file {output_path}: {e}", file=sys.stderr)
+        raise
+
+
+def find_result_files(input_dir: Path) -> List[Path]:
+    """Find all result JSON files in input directory.
+    
+    Handles both flat directory structure and time-partitioned structure (submissions/YYYY/MM/).
+    
+    Args:
+        input_dir: Root input directory
+        
+    Returns:
+        List of Path objects to JSON files
+    """
+    result_files = []
+    
+    if not input_dir.exists():
+        return result_files
+    
+    # First, try flat structure: look for *.json files directly in input_dir
+    flat_files = list(input_dir.glob('*.json'))
+    if flat_files:
+        result_files.extend(flat_files)
+    
+    # Also check for time-partitioned structure: submissions/YYYY/MM/*.json
+    # Check if input_dir contains year directories (numeric)
+    for year_dir in input_dir.iterdir():
+        if year_dir.is_dir() and year_dir.name.isdigit():
+            # This might be a year directory (YYYY)
+            for month_dir in year_dir.iterdir():
+                if month_dir.is_dir() and month_dir.name.isdigit():
+                    # This might be a month directory (MM)
+                    month_files = list(month_dir.glob('*.json'))
+                    result_files.extend(month_files)
+    
+    return result_files
+
+
+def extract_leaderboard_data(results: List[dict]) -> List[dict]:
+    """Extract data for leaderboard from result files.
+    
+    Extracts key fields needed for leaderboard:
+    - Tool identification: tool_name, tool_version, run_id
+    - Configuration: target_model, api_style, run_number
+    - Quality metric: pass_rate
+    - Speed metric: duration_minutes
+    - Additional context: llm_model, submitted_timestamp, submitted_by
+    """
+    leaderboard_entries = []
+    
+    for result in results:
+        try:
+            ri = result['result_data']['run_identity']
+            impls = result['result_data']['implementations']
+            submission = result['result_data']['submission']
+            
+            # Extract tool identification
+            tool_name = ri.get('tool_name', '')
+            tool_version = ri.get('tool_version', '')
+            run_id = ri.get('run_id', '')
+            
+            # Extract configuration
+            target_model = ri.get('target_model', '')
+            api_style = ri.get('api_style', '')
+            run_number = ri.get('run_number', None)
+            
+            # Extract API implementation metrics (required for leaderboard)
+            if 'api' not in impls:
+                # Skip results without API implementation
+                continue
+            
+            api = impls['api']
+            gen = api.get('generation_metrics', {})
+            acceptance = api.get('acceptance', {})
+            
+            pass_rate = acceptance.get('passrate')
+            duration_minutes = gen.get('duration_minutes')
+            llm_model = gen.get('llm_model', '')
+            
+            # Skip entries with missing critical metrics
+            if pass_rate is None or duration_minutes is None:
+                filename = result.get('_filename', 'unknown')
+                print(f"Warning: Skipping result file {filename} - missing pass_rate or duration_minutes", file=sys.stderr)
+                continue
+            
+            # Extract submission context
+            submitted_timestamp = submission.get('submitted_timestamp', '')
+            submitted_by = submission.get('submitted_by', '')
+            
+            # Create leaderboard entry
+            entry = {
+                'tool_name': tool_name,
+                'tool_version': tool_version,
+                'run_id': run_id,
+                'target_model': target_model,
+                'api_style': api_style,
+                'run_number': run_number,
+                'pass_rate': pass_rate,
+                'duration_minutes': duration_minutes,
+                'llm_model': llm_model,
+                'submitted_timestamp': submitted_timestamp,
+                'submitted_by': submitted_by
+            }
+            
+            leaderboard_entries.append(entry)
+            
+        except (KeyError, TypeError) as e:
+            # Skip invalid results, but log warning
+            filename = result.get('_filename', 'unknown')
+            print(f"Warning: Skipping result file {filename} due to missing required fields: {e}", file=sys.stderr)
+            continue
+    
+    return leaderboard_entries
+
+
+def calculate_composite_score(pass_rate: float, duration_minutes: float) -> float:
+    """Calculate composite "fast+quality" score.
+    
+    Uses formula: pass_rate / duration_minutes (higher is better)
+    This rewards both high quality (pass_rate) and speed (low duration).
+    
+    Args:
+        pass_rate: Quality metric (0.0 to 1.0, higher is better)
+        duration_minutes: Speed metric (lower is better)
+    
+    Returns:
+        Composite score (higher is better)
+    """
+    # Handle edge cases
+    if duration_minutes <= 0:
+        # If duration is zero or negative, return 0 (invalid)
+        return 0.0
+    
+    if pass_rate < 0:
+        # If pass_rate is negative, return 0 (invalid)
+        return 0.0
+    
+    # Calculate composite: pass_rate / duration_minutes
+    # Higher pass_rate and lower duration both increase the score
+    composite = pass_rate / duration_minutes
+    
+    return composite
+
+
+def generate_sorted_views(entries: List[dict]) -> dict:
+    """Generate multiple sorted leaderboard views.
+    
+    Args:
+        entries: List of leaderboard entries with metrics
+    
+    Returns:
+        Dictionary with sorted views: by_quality, by_speed, by_composite
+    """
+    # Calculate composite scores for all entries
+    entries_with_composite = []
+    for entry in entries:
+        composite_score = calculate_composite_score(
+            entry['pass_rate'],
+            entry['duration_minutes']
+        )
+        entry_copy = entry.copy()
+        entry_copy['composite_score'] = composite_score
+        entries_with_composite.append(entry_copy)
+    
+    # Sort by quality (pass_rate, descending)
+    by_quality = sorted(
+        entries_with_composite,
+        key=lambda x: x['pass_rate'],
+        reverse=True
+    )
+    
+    # Sort by speed (duration_minutes, ascending)
+    by_speed = sorted(
+        entries_with_composite,
+        key=lambda x: x['duration_minutes']
+    )
+    
+    # Sort by composite score (descending)
+    by_composite = sorted(
+        entries_with_composite,
+        key=lambda x: x['composite_score'],
+        reverse=True
+    )
+    
+    return {
+        'by_quality': by_quality,
+        'by_speed': by_speed,
+        'by_composite': by_composite
+    }
+
+
+def build_leaderboard_json(entries: List[dict], sorted_views: dict) -> dict:
+    """Build leaderboard JSON structure with metadata and sorted views.
+    
+    Args:
+        entries: List of all leaderboard entries
+        sorted_views: Dictionary with sorted views
+    
+    Returns:
+        Complete leaderboard JSON structure
+    """
+    leaderboard = {
+        'metadata': {
+            'generated_at': datetime.now().isoformat(),
+            'total_results': len(entries),
+            'sort_options': {
+                'by_quality': {
+                    'field': 'pass_rate',
+                    'direction': 'descending',
+                    'description': 'Sorted by acceptance test pass rate (quality)'
+                },
+                'by_speed': {
+                    'field': 'duration_minutes',
+                    'direction': 'ascending',
+                    'description': 'Sorted by generation duration (speed)'
+                },
+                'by_composite': {
+                    'field': 'composite_score',
+                    'direction': 'descending',
+                    'description': 'Sorted by composite fast+quality score (pass_rate / duration_minutes)'
+                }
+            }
+        },
+        'results': entries,
+        'sorted_views': sorted_views
+    }
+    
+    return leaderboard
+
+
+def write_leaderboard_json(leaderboard: dict, output_path: Path) -> None:
+    """Write leaderboard JSON to file.
+    
+    Args:
+        leaderboard: Leaderboard data structure
+        output_path: Path to output JSON file
+    """
+    # Create output directory if it doesn't exist
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    
+    # Write JSON file with pretty-printing
+    try:
+        with open(output_path, 'w', encoding='utf-8') as f:
+            json.dump(leaderboard, f, indent=2, ensure_ascii=False)
+        
+        print(f"✓ Generated leaderboard: {output_path}")
+        
+    except IOError as e:
+        print(f"Error writing leaderboard file {output_path}: {e}", file=sys.stderr)
+        raise
+
+
 def main():
-    parser = argparse.ArgumentParser(description='Benchmark results aggregation (v2.0 schema)')
+    parser = argparse.ArgumentParser(description='Benchmark results aggregation (v2.0 and v3.0 schema support)')
     parser.add_argument('--input-dir', default='results/submitted', help='Input directory')
     parser.add_argument('--output-dir', default='results/compiled', help='Output directory')
     
@@ -694,8 +1079,8 @@ def main():
     
     output_dir.mkdir(parents=True, exist_ok=True)
     
-    # Find all result files
-    result_files = list(input_dir.glob('*.json'))
+    # Find all result files (handles both flat and time-partitioned structure)
+    result_files = find_result_files(input_dir)
     
     if not result_files:
         print(f"No result files found in {input_dir}", file=sys.stderr)
@@ -727,6 +1112,31 @@ def main():
     
     print(f"\n✓ Enhanced reports generated in: {output_dir}")
     print("  Open the .html files in your browser for interactive visualizations")
+    
+    # Generate CSV export
+    csv_rows = extract_csv_data(results)
+    if csv_rows:
+        # Write CSV to aggregates/results.csv
+        repo_root = script_dir.parent
+        aggregates_dir = repo_root / 'aggregates'
+        csv_output_path = aggregates_dir / 'results.csv'
+        write_csv_export(csv_rows, csv_output_path)
+    else:
+        print("No data available for CSV export", file=sys.stderr)
+    
+    # Generate leaderboard
+    leaderboard_entries = extract_leaderboard_data(results)
+    if leaderboard_entries:
+        sorted_views = generate_sorted_views(leaderboard_entries)
+        leaderboard_json = build_leaderboard_json(leaderboard_entries, sorted_views)
+        
+        # Write leaderboard to aggregates/leaderboard.json
+        repo_root = script_dir.parent
+        aggregates_dir = repo_root / 'aggregates'
+        leaderboard_output_path = aggregates_dir / 'leaderboard.json'
+        write_leaderboard_json(leaderboard_json, leaderboard_output_path)
+    else:
+        print("No data available for leaderboard generation", file=sys.stderr)
 
 
 if __name__ == '__main__':

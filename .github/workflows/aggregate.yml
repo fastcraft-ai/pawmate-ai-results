@@ -1,0 +1,75 @@
+name: Aggregate Results
+
+on:
+  push:
+    paths:
+      - 'submissions/**'
+  workflow_dispatch:
+
+jobs:
+  aggregate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      
+      - name: Install dependencies
+        run: |
+          # Check if requirements.txt exists, otherwise install common dependencies
+          if [ -f scripts/requirements.txt ]; then
+            pip install -r scripts/requirements.txt
+          else
+            # No additional dependencies needed for aggregation script
+            echo "No requirements.txt found, using standard library only"
+          fi
+      
+      - name: Run aggregation script
+        run: |
+          # Run aggregation script with submissions directory as input
+          # Script will generate CSV and leaderboard in aggregates/ directory
+          python3 scripts/aggregate_results.py --input-dir submissions --output-dir results/compiled
+      
+      - name: Check for changes
+        id: changes
+        run: |
+          # Check if aggregate files were generated or modified
+          if [ -f aggregates/results.csv ] || [ -f aggregates/leaderboard.json ]; then
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          fi
+          
+          # Also check if HTML reports were generated
+          if [ -n "$(git status --porcelain results/compiled/ aggregates/ 2>/dev/null)" ]; then
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Commit aggregated results
+        if: steps.changes.outputs.has_changes == 'true'
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          
+          # Stage aggregate files
+          git add aggregates/results.csv aggregates/leaderboard.json 2>/dev/null || true
+          
+          # Stage HTML reports if any were generated
+          git add results/compiled/*.html 2>/dev/null || true
+          
+          # Check if there are staged changes
+          if [ -n "$(git status --porcelain)" ]; then
+            git commit -m "chore: Update aggregated results and leaderboard [skip ci]"
+            git push
+          else
+            echo "No changes to commit"
+          fi
+

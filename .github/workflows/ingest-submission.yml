@@ -1,0 +1,304 @@
+name: Ingest Submission
+
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  check-label:
+    runs-on: ubuntu-latest
+    outputs:
+      has-submission-label: ${{ steps.check.outputs.has-label }}
+    steps:
+      - name: Check for submission label
+        id: check
+        run: |
+          LABELS='${{ toJSON(github.event.issue.labels) }}'
+          if python3 -c "import json, sys; labels = json.load(sys.stdin); print('true' if any(l.get('name') == 'submission' for l in labels) else 'false')" <<< "$LABELS" | grep -q "true"; then
+            echo "has-label=true" >> $GITHUB_OUTPUT
+          else
+            echo "has-label=false" >> $GITHUB_OUTPUT
+          fi
+  
+  ingest:
+    runs-on: ubuntu-latest
+    needs: check-label
+    if: needs.check-label.outputs.has-submission-label == 'true'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      
+      - name: Install dependencies
+        run: |
+          pip install jsonschema jq
+      
+      - name: Ingest issue and extract JSON
+        id: ingest
+        run: |
+          # Use GitHub Actions provided event file path (more reliable than converting context)
+          python3 scripts/ingest-issue.py --env GITHUB_EVENT_PATH > ingestion_output.json
+          # Capture output for subsequent steps
+          cat ingestion_output.json
+        continue-on-error: true
+      
+      - name: Validate result JSON
+        id: validate
+        run: |
+          # Read ingestion output and validate
+          python3 scripts/validate-result-v3.py --file ingestion_output.json > validation_output.json
+          # Capture output for subsequent steps
+          cat validation_output.json
+        continue-on-error: true
+      
+      - name: Store validated result
+        id: store
+        run: |
+          # Read validation output and store
+          python3 scripts/store-result.py --file validation_output.json > storage_output.json
+          # Capture output for subsequent steps
+          cat storage_output.json
+        continue-on-error: true
+      
+      - name: Set workflow outputs
+        id: outputs
+        if: always()
+        run: |
+          # Extract key information from each step for Task 3.5 error handling
+          # Issue metadata from ingestion
+          if [ -f ingestion_output.json ]; then
+            echo "ingest_success=$(jq -r '.success' ingestion_output.json)" >> $GITHUB_OUTPUT
+            echo "issue_number=$(jq -r '.issue_metadata.issue_number' ingestion_output.json)" >> $GITHUB_OUTPUT
+            echo "issue_url=$(jq -r '.issue_metadata.issue_url' ingestion_output.json)" >> $GITHUB_OUTPUT
+            echo "submitter=$(jq -r '.issue_metadata.submitter' ingestion_output.json)" >> $GITHUB_OUTPUT
+            echo "ingest_error=$(jq -r '.error // "none"' ingestion_output.json)" >> $GITHUB_OUTPUT
+          else
+            echo "ingest_success=false" >> $GITHUB_OUTPUT
+            echo "issue_number=${{ github.event.issue.number }}" >> $GITHUB_OUTPUT
+            echo "submitter=${{ github.event.issue.user.login }}" >> $GITHUB_OUTPUT
+            echo "ingest_error=Ingestion output file not found" >> $GITHUB_OUTPUT
+          fi
+          
+          # Validation results
+          if [ -f validation_output.json ]; then
+            echo "validation_success=$(jq -r '.success' validation_output.json)" >> $GITHUB_OUTPUT
+            echo "error_count=$(jq -r '.error_count // 0' validation_output.json)" >> $GITHUB_OUTPUT
+            echo "github_comment<<EOF" >> $GITHUB_OUTPUT
+            jq -r '.github_comment // ""' validation_output.json >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+          else
+            echo "validation_success=false" >> $GITHUB_OUTPUT
+            echo "error_count=0" >> $GITHUB_OUTPUT
+            echo "github_comment=Validation output file not found" >> $GITHUB_OUTPUT
+          fi
+          
+          # Storage results
+          if [ -f storage_output.json ]; then
+            echo "storage_success=$(jq -r '.success' storage_output.json)" >> $GITHUB_OUTPUT
+            echo "file_path=$(jq -r '.file_path // ""' storage_output.json)" >> $GITHUB_OUTPUT
+            echo "run_id=$(jq -r '.run_id // ""' storage_output.json)" >> $GITHUB_OUTPUT
+          else
+            echo "storage_success=false" >> $GITHUB_OUTPUT
+            echo "file_path=" >> $GITHUB_OUTPUT
+            echo "run_id=" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Detect errors and determine overall success
+        id: error_detection
+        if: always()
+        run: |
+          # Determine overall pipeline success: all three steps must succeed
+          INGEST_SUCCESS="${{ steps.outputs.outputs.ingest_success }}"
+          VALIDATION_SUCCESS="${{ steps.outputs.outputs.validation_success }}"
+          STORAGE_SUCCESS="${{ steps.outputs.outputs.storage_success }}"
+          
+          # Set overall success flag
+          if [ "$INGEST_SUCCESS" == "true" ] && [ "$VALIDATION_SUCCESS" == "true" ] && [ "$STORAGE_SUCCESS" == "true" ]; then
+            echo "pipeline_success=true" >> $GITHUB_OUTPUT
+          else
+            echo "pipeline_success=false" >> $GITHUB_OUTPUT
+          fi
+          
+          # Determine which step(s) failed for error messaging
+          FAILED_STEPS=""
+          if [ "$INGEST_SUCCESS" != "true" ]; then
+            FAILED_STEPS="${FAILED_STEPS}ingestion "
+          fi
+          if [ "$VALIDATION_SUCCESS" != "true" ]; then
+            FAILED_STEPS="${FAILED_STEPS}validation "
+          fi
+          if [ "$STORAGE_SUCCESS" != "true" ]; then
+            FAILED_STEPS="${FAILED_STEPS}storage "
+          fi
+          echo "failed_steps=${FAILED_STEPS}" >> $GITHUB_OUTPUT
+      
+      - name: Send email notification on validation failure
+        if: always() && steps.error_detection.outputs.validation_success != 'true'
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: ${{ secrets.SMTP_SERVER }}
+          server_port: ${{ secrets.SMTP_PORT }}
+          username: ${{ secrets.SMTP_USERNAME }}
+          password: ${{ secrets.SMTP_PASSWORD }}
+          subject: 'Validation Failed - Issue #${{ steps.outputs.outputs.issue_number }} by @${{ steps.outputs.outputs.submitter }}'
+          to: pawmate.ai.challenge@gmail.com
+          from: ${{ secrets.SMTP_FROM }}
+          body: |
+            Validation Failure Notification
+            
+            A submission validation failure has occurred in the PawMate AI Challenge results repository.
+            
+            Issue Details:
+            - Issue Number: #${{ steps.outputs.outputs.issue_number }}
+            - Issue URL: ${{ steps.outputs.outputs.issue_url }}
+            - Issue Title: ${{ github.event.issue.title }}
+            - Created At: ${{ github.event.issue.created_at }}
+            
+            Submitter Information:
+            - Username: @${{ steps.outputs.outputs.submitter }}
+            - GitHub Profile: https://github.com/${{ steps.outputs.outputs.submitter }}
+            
+            Validation Results:
+            - Validation Status: FAILED
+            - Error Count: ${{ steps.outputs.outputs.error_count }}
+            - Failed Steps: ${{ steps.error_detection.outputs.failed_steps }}
+            
+            Validation Errors:
+            ${{ steps.outputs.outputs.github_comment }}
+            
+            Pipeline Status:
+            - Ingestion: ${{ steps.outputs.outputs.ingest_success }}
+            - Validation: ${{ steps.outputs.outputs.validation_success }}
+            - Storage: ${{ steps.outputs.outputs.storage_success }}
+            
+            Link to Issue:
+            ${{ steps.outputs.outputs.issue_url }}
+            
+            Timestamp: ${{ github.event.issue.created_at }}
+            
+            ---
+            This is an automated notification from the PawMate AI Challenge ingestion workflow.
+          ignore_error: true
+      
+      - name: Comment on issue with errors
+        if: steps.error_detection.outputs.pipeline_success != 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issueNumber = context.issue.number;
+            const submitter = '${{ steps.outputs.outputs.submitter }}' || context.issue.user.login;
+            const ingestSuccess = '${{ steps.outputs.outputs.ingest_success }}' === 'true';
+            const validationSuccess = '${{ steps.outputs.outputs.validation_success }}' === 'true';
+            const storageSuccess = '${{ steps.outputs.outputs.storage_success }}' === 'true';
+            const ingestError = `${{ steps.outputs.outputs.ingest_error }}`;
+            const validationComment = `${{ steps.outputs.outputs.github_comment }}`;
+            const errorCount = parseInt('${{ steps.outputs.outputs.error_count }}' || '0');
+            
+            // Build error message
+            let errorMessage = '❌ **Submission Processing Failed**\n\n';
+            errorMessage += `@${submitter} Your submission could not be processed. Please review the errors below and update your issue.\n\n`;
+            
+            // Add ingestion errors
+            if (!ingestSuccess) {
+              errorMessage += '### 🔍 Ingestion Error\n\n';
+              if (ingestError && ingestError !== 'none') {
+                errorMessage += `${ingestError}\n\n`;
+              } else {
+                errorMessage += 'Failed to extract JSON from issue body. Please ensure your JSON is properly formatted.\n\n';
+              }
+              errorMessage += '**How to fix:**\n';
+              errorMessage += '- Ensure your JSON is valid and properly formatted\n';
+              errorMessage += '- Check that the JSON is in a code block (```json ... ```) or directly in the textarea field\n';
+              errorMessage += '- Verify the JSON structure matches the [PawMate Result Schema v3.0](schemas/result-schema-v3.0.json)\n\n';
+            }
+            
+            // Add validation errors
+            if (!validationSuccess) {
+              errorMessage += '### ❌ Validation Error\n\n';
+              if (validationComment && validationComment.trim() !== '') {
+                errorMessage += validationComment + '\n\n';
+              } else {
+                errorMessage += `Found ${errorCount} validation error(s). Please review the schema requirements.\n\n`;
+              }
+              errorMessage += '**How to fix:**\n';
+              errorMessage += '- Review the validation errors above\n';
+              errorMessage += '- Ensure all required fields are present (see [schema documentation](schemas/README.md))\n';
+              errorMessage += '- Check field types and formats match the schema requirements\n';
+              errorMessage += '- Update your JSON and comment on this issue to trigger re-processing\n\n';
+            }
+            
+            // Add storage errors
+            if (!storageSuccess && ingestSuccess && validationSuccess) {
+              errorMessage += '### 💾 Storage Error\n\n';
+              errorMessage += 'Validation passed but failed to store the result file.\n\n';
+              errorMessage += '**How to fix:**\n';
+              errorMessage += '- This is typically a system error. Please try resubmitting your result.\n';
+              errorMessage += '- If the problem persists, contact the repository maintainers.\n\n';
+            }
+            
+            errorMessage += '---\n\n';
+            errorMessage += '💡 **Tip:** After fixing your submission, you can update this issue or create a new one with the corrected JSON.';
+            
+            // Post comment on issue
+            await github.rest.issues.createComment({
+              issue_number: issueNumber,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: errorMessage
+            });
+      
+      - name: Comment success and close issue
+        if: steps.error_detection.outputs.pipeline_success == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issueNumber = context.issue.number;
+            const submitter = '${{ steps.outputs.outputs.submitter }}' || context.issue.user.login;
+            const filePath = '${{ steps.outputs.outputs.file_path }}';
+            const runId = '${{ steps.outputs.outputs.run_id }}';
+            
+            // Build success message
+            let successMessage = '✅ **Submission Processed Successfully**\n\n';
+            successMessage += `@${submitter} Your submission has been processed and stored successfully!\n\n`;
+            successMessage += '**Submission Details:**\n';
+            successMessage += `- **Run ID:** \`${runId}\`\n`;
+            successMessage += `- **Storage Path:** \`${filePath}\`\n\n`;
+            successMessage += 'Your result has been:\n';
+            successMessage += '1. ✅ Extracted from issue body\n';
+            successMessage += '2. ✅ Validated against schema v3.0\n';
+            successMessage += '3. ✅ Stored in time-partitioned directory\n\n';
+            successMessage += 'The result will be included in comparison reports and leaderboards.\n\n';
+            successMessage += '---\n\n';
+            successMessage += 'This issue will be automatically closed.';
+            
+            // Post success comment
+            await github.rest.issues.createComment({
+              issue_number: issueNumber,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: successMessage
+            });
+            
+            // Close the issue
+            await github.rest.issues.update({
+              issue_number: issueNumber,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'closed'
+            });
+      
+      - name: Upload intermediate outputs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ingestion-outputs
+          path: |
+            ingestion_output.json
+            validation_output.json
+            storage_output.json
+          retention-days: 7
+

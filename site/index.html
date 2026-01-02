@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="PawMate AI Challenge Results Dashboard - Visualize model performance metrics">
+    <title>PawMate AI Challenge - Results Dashboard</title>
+    
+    <!-- Chart.js Library -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding-bottom: 20px;
+            border-bottom: 3px solid #667eea;
+        }
+
+        h1 {
+            color: #667eea;
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 1.1rem;
+        }
+
+        .controls-panel {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 40px;
+            border: 2px solid #e9ecef;
+        }
+
+        .controls-panel h2 {
+            color: #495057;
+            font-size: 1.3rem;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+
+        .sort-controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .sort-controls label {
+            font-weight: 500;
+            color: #495057;
+            margin-right: 10px;
+        }
+
+        .sort-button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .sort-button:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .sort-button:active {
+            transform: translateY(0);
+        }
+
+        .sort-button.active {
+            background: #764ba2;
+            box-shadow: 0 0 0 3px rgba(118, 75, 162, 0.3);
+        }
+
+        .charts-container {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 40px;
+            margin-top: 30px;
+        }
+
+        .chart-section {
+            background: #ffffff;
+            border-radius: 8px;
+            padding: 30px;
+            border: 1px solid #e9ecef;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        .chart-section h2 {
+            color: #495057;
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .chart-section p {
+            color: #6c757d;
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 0.95rem;
+        }
+
+        .chart-wrapper {
+            position: relative;
+            height: 400px;
+            margin-top: 20px;
+        }
+
+        canvas {
+            max-height: 100%;
+        }
+
+        /* Responsive Design */
+        @media (min-width: 768px) {
+            .charts-container {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (min-width: 1200px) {
+            .charts-container {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        @media (max-width: 767px) {
+            body {
+                padding: 10px;
+            }
+
+            .container {
+                padding: 20px;
+            }
+
+            h1 {
+                font-size: 1.8rem;
+            }
+
+            .sort-controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .sort-button {
+                width: 100%;
+            }
+
+            .chart-wrapper {
+                height: 300px;
+            }
+        }
+
+        .instructions {
+            background: #e7f3ff;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            margin-bottom: 30px;
+            border-radius: 4px;
+        }
+
+        .instructions p {
+            color: #495057;
+            margin: 0;
+            font-size: 0.95rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>PawMate AI Challenge</h1>
+            <p class="subtitle">Results Dashboard - Model Performance Metrics</p>
+        </header>
+
+        <div class="controls-panel">
+            <h2>Sort Leaderboard</h2>
+            <div class="instructions">
+                <p>Select a sorting method to organize the leaderboard data by different performance metrics.</p>
+            </div>
+            <div class="sort-controls">
+                <label for="sort-quality">Sort by:</label>
+                <button id="sort-quality" class="sort-button" data-sort="quality">
+                    Quality (Pass Rate)
+                </button>
+                <button id="sort-speed" class="sort-button" data-sort="speed">
+                    Speed (Duration)
+                </button>
+                <button id="sort-composite" class="sort-button active" data-sort="composite">
+                    Composite (Fast + Quality Score)
+                </button>
+            </div>
+        </div>
+
+        <div class="charts-container">
+            <div class="chart-section" id="pass-rate-chart-section">
+                <h2>Pass Rate Chart</h2>
+                <p>Quality metric visualization showing model pass rates</p>
+                <div class="chart-wrapper">
+                    <canvas id="passRateChart"></canvas>
+                </div>
+            </div>
+
+            <div class="chart-section" id="duration-chart-section">
+                <h2>Duration Chart</h2>
+                <p>Speed metric visualization showing execution duration</p>
+                <div class="chart-wrapper">
+                    <canvas id="durationChart"></canvas>
+                </div>
+            </div>
+
+            <div class="chart-section" id="composite-chart-section">
+                <h2>Composite Metrics Chart</h2>
+                <p>Fast + Quality score visualization</p>
+                <div class="chart-wrapper">
+                    <canvas id="compositeChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables for leaderboard data and chart instances
+        let leaderboardData = null;
+        let passRateChart = null;
+        let durationChart = null;
+        let compositeChart = null;
+        let currentSort = 'composite'; // Default sort
+
+        // Load leaderboard JSON data
+        async function loadLeaderboardData() {
+            try {
+                const response = await fetch('../aggregates/leaderboard.json');
+                
+                if (!response.ok) {
+                    throw new Error(`Failed to load leaderboard data: ${response.status} ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                
+                // Validate structure
+                if (!data.metadata || !data.results || !data.sorted_views) {
+                    throw new Error('Invalid leaderboard JSON structure: missing required fields');
+                }
+                
+                if (!data.sorted_views.by_quality || !data.sorted_views.by_speed || !data.sorted_views.by_composite) {
+                    throw new Error('Invalid leaderboard JSON structure: missing sorted_views');
+                }
+                
+                leaderboardData = data;
+                console.log('Leaderboard data loaded successfully:', data.metadata);
+                
+                // Initialize charts with data
+                initializeCharts();
+                updateCharts(currentSort);
+                
+            } catch (error) {
+                console.error('Error loading leaderboard data:', error);
+                displayError(error.message);
+            }
+        }
+
+        // Display error message to user
+        function displayError(message) {
+            const container = document.querySelector('.container');
+            const errorDiv = document.createElement('div');
+            errorDiv.style.cssText = 'background: #ffebee; border-left: 4px solid #f44336; padding: 20px; margin: 20px 0; border-radius: 4px;';
+            errorDiv.innerHTML = `
+                <h3 style="color: #c62828; margin: 0 0 10px 0;">Error Loading Data</h3>
+                <p style="color: #424242; margin: 0;">${message}</p>
+                <p style="color: #666; margin: 10px 0 0 0; font-size: 0.9rem;">
+                    Make sure the leaderboard.json file exists at <code>aggregates/leaderboard.json</code>
+                </p>
+            `;
+            container.insertBefore(errorDiv, container.firstChild);
+        }
+
+        // Process leaderboard data into chart datasets
+        function processDataForCharts(sortedView) {
+            if (!sortedView || !Array.isArray(sortedView) || sortedView.length === 0) {
+                return {
+                    labels: [],
+                    passRates: [],
+                    durations: [],
+                    compositeScores: []
+                };
+            }
+
+            const labels = [];
+            const passRates = [];
+            const durations = [];
+            const compositeScores = [];
+
+            for (const entry of sortedView) {
+                // Create unique tool label: tool_name + tool_version (if available)
+                const toolName = entry.tool_name || 'Unknown';
+                const toolVersion = entry.tool_version ? ` ${entry.tool_version}` : '';
+                const label = `${toolName}${toolVersion}`;
+                
+                labels.push(label);
+                
+                // Extract metrics with null/undefined handling
+                const passRate = entry.pass_rate != null ? entry.pass_rate * 100 : 0; // Convert to percentage
+                const duration = entry.duration_minutes != null ? entry.duration_minutes : 0;
+                const composite = entry.composite_score != null ? entry.composite_score : 0;
+                
+                passRates.push(passRate);
+                durations.push(duration);
+                compositeScores.push(composite);
+            }
+
+            return {
+                labels,
+                passRates,
+                durations,
+                compositeScores
+            };
+        }
+
+        // Initialize Chart.js chart instances
+        function initializeCharts() {
+            // Pass Rate Chart
+            const passRateCtx = document.getElementById('passRateChart').getContext('2d');
+            passRateChart = new Chart(passRateCtx, {
+                type: 'bar',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Pass Rate (%)',
+                        data: [],
+                        backgroundColor: 'rgba(102, 126, 234, 0.6)',
+                        borderColor: 'rgba(102, 126, 234, 1)',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: {
+                        duration: 750
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `Pass Rate: ${context.parsed.y.toFixed(2)}%`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            title: {
+                                display: true,
+                                text: 'Pass Rate (%)'
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return value + '%';
+                                }
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                maxRotation: 45,
+                                minRotation: 45
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Duration Chart
+            const durationCtx = document.getElementById('durationChart').getContext('2d');
+            durationChart = new Chart(durationCtx, {
+                type: 'bar',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Duration (minutes)',
+                        data: [],
+                        backgroundColor: 'rgba(118, 75, 162, 0.6)',
+                        borderColor: 'rgba(118, 75, 162, 1)',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: {
+                        duration: 750
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `Duration: ${context.parsed.y.toFixed(2)} minutes`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Duration (minutes)'
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return value.toFixed(2) + ' min';
+                                }
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                maxRotation: 45,
+                                minRotation: 45
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Composite Metrics Chart
+            const compositeCtx = document.getElementById('compositeChart').getContext('2d');
+            compositeChart = new Chart(compositeCtx, {
+                type: 'bar',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Composite Score',
+                        data: [],
+                        backgroundColor: 'rgba(255, 159, 64, 0.6)',
+                        borderColor: 'rgba(255, 159, 64, 1)',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: {
+                        duration: 750
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `Composite Score: ${context.parsed.y.toFixed(4)}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Composite Score'
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return value.toFixed(2);
+                                }
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                maxRotation: 45,
+                                minRotation: 45
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Update all charts with data from selected sort view
+        function updateCharts(sortType) {
+            if (!leaderboardData) {
+                console.error('Leaderboard data not loaded');
+                return;
+            }
+
+            // Map sort type to sorted view
+            const sortViewMap = {
+                'quality': leaderboardData.sorted_views.by_quality,
+                'speed': leaderboardData.sorted_views.by_speed,
+                'composite': leaderboardData.sorted_views.by_composite
+            };
+
+            const sortedView = sortViewMap[sortType];
+            if (!sortedView) {
+                console.error(`Invalid sort type: ${sortType}`);
+                return;
+            }
+
+            // Process data for charts
+            const chartData = processDataForCharts(sortedView);
+
+            // Update Pass Rate Chart
+            passRateChart.data.labels = chartData.labels;
+            passRateChart.data.datasets[0].data = chartData.passRates;
+            passRateChart.update('active');
+
+            // Update Duration Chart
+            durationChart.data.labels = chartData.labels;
+            durationChart.data.datasets[0].data = chartData.durations;
+            durationChart.update('active');
+
+            // Update Composite Chart
+            compositeChart.data.labels = chartData.labels;
+            compositeChart.data.datasets[0].data = chartData.compositeScores;
+            compositeChart.update('active');
+        }
+
+        // Initialize sort control handlers
+        function initializeSortControls() {
+            const sortButtons = document.querySelectorAll('.sort-button');
+            
+            sortButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    // Remove active class from all buttons
+                    sortButtons.forEach(btn => btn.classList.remove('active'));
+                    
+                    // Add active class to clicked button
+                    this.classList.add('active');
+                    
+                    // Get sort type from data attribute
+                    const sortType = this.getAttribute('data-sort');
+                    currentSort = sortType;
+                    
+                    // Update all charts with new sort
+                    updateCharts(sortType);
+                });
+            });
+        }
+
+        // Initialize dashboard when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeSortControls();
+            loadLeaderboardData();
+        });
+    </script>
+</body>
+</html>
+

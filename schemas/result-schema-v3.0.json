@@ -1,0 +1,733 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PawMate Benchmark Result File Schema v3.0",
+  "description": "Schema v3.0 extends v2.0 with optional metadata sections for GitHub Issues submission, automated processing pipeline, time-partitioned storage, validation tracking, and aggregation management. All v2.0 core functionality is preserved.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "result_data"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "enum": ["3.0"],
+      "description": "Schema version identifier"
+    },
+    "result_data": {
+      "type": "object",
+      "required": [
+        "run_identity",
+        "implementations",
+        "submission"
+      ],
+      "properties": {
+        "run_identity": {
+          "type": "object",
+          "description": "Tool and run identification information",
+          "required": [
+            "tool_name",
+            "tool_version",
+            "run_id",
+            "run_number",
+            "target_model",
+            "api_style",
+            "spec_reference",
+            "workspace_path",
+            "run_environment"
+          ],
+          "properties": {
+            "tool_name": {
+              "type": "string",
+              "description": "Name of the AI tool used (e.g., 'Cursor', 'GitHub Copilot')"
+            },
+            "tool_version": {
+              "type": "string",
+              "description": "Version of the AI tool"
+            },
+            "run_id": {
+              "type": "string",
+              "description": "Unique identifier for this run"
+            },
+            "run_number": {
+              "type": "integer",
+              "enum": [1, 2],
+              "description": "Run number (1 or 2)"
+            },
+            "target_model": {
+              "type": "string",
+              "enum": ["A", "B"],
+              "description": "Target model identifier"
+            },
+            "api_style": {
+              "type": "string",
+              "enum": ["REST", "GraphQL"],
+              "description": "API style used for this run"
+            },
+            "spec_reference": {
+              "type": "string",
+              "description": "Reference to specification version or identifier"
+            },
+            "workspace_path": {
+              "type": "string",
+              "description": "Path to the workspace where the run was executed"
+            },
+            "run_environment": {
+              "type": "string",
+              "description": "Description of the runtime environment"
+            }
+          }
+        },
+        "implementations": {
+          "type": "object",
+          "description": "Independent implementation phases (API and/or UI)",
+          "properties": {
+            "api": {
+              "type": "object",
+              "description": "Backend/API implementation",
+              "required": [
+                "generation_metrics",
+                "acceptance",
+                "artifacts"
+              ],
+              "properties": {
+                "generation_metrics": {
+                  "type": "object",
+                  "description": "API generation metrics and timing",
+                  "required": [
+                    "llm_model",
+                    "start_timestamp",
+                    "end_timestamp",
+                    "duration_minutes",
+                    "clarifications_count",
+                    "interventions_count",
+                    "reruns_count"
+                  ],
+                  "properties": {
+                    "llm_model": {
+                      "type": "string",
+                      "description": "The LLM model used for this implementation (e.g., 'claude-sonnet-4.5', 'gpt-4', 'claude-opus-3')"
+                    },
+                    "start_timestamp": {
+                      "type": "string",
+                      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{3})?Z$",
+                      "description": "When API generation started (ISO-8601 UTC)"
+                    },
+                    "end_timestamp": {
+                      "type": "string",
+                      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{3})?Z$",
+                      "description": "When API generation completed (ISO-8601 UTC)"
+                    },
+                    "duration_minutes": {
+                      "type": "number",
+                      "minimum": 0,
+                      "description": "Duration of API generation in minutes"
+                    },
+                    "clarifications_count": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "description": "Number of clarification questions asked"
+                    },
+                    "interventions_count": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "description": "Number of manual interventions required"
+                    },
+                    "reruns_count": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "description": "Number of times the run was restarted"
+                    },
+                    "test_runs": {
+                      "type": "array",
+                      "description": "Array of test run iterations with timestamps and results",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "run_number",
+                          "start_timestamp",
+                          "end_timestamp",
+                          "duration_minutes",
+                          "total_tests",
+                          "passed",
+                          "failed",
+                          "pass_rate"
+                        ],
+                        "properties": {
+                          "run_number": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "description": "Test run iteration number"
+                          },
+                          "start_timestamp": {
+                            "type": "string",
+                            "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{3})?Z$",
+                            "description": "When test run started (ISO-8601 UTC)"
+                          },
+                          "end_timestamp": {
+                            "type": "string",
+                            "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{3})?Z$",
+                            "description": "When test run completed (ISO-8601 UTC)"
+                          },
+                          "duration_minutes": {
+                            "type": "number",
+                            "minimum": 0,
+                            "description": "Duration of test run in minutes"
+                          },
+                          "total_tests": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "Total number of tests"
+                          },
+                          "passed": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "Number of tests passed"
+                          },
+                          "failed": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "Number of tests failed"
+                          },
+                          "pass_rate": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1,
+                            "description": "Pass rate (0.0 to 1.0)"
+                          }
+                        }
+                      }
+                    },
+                    "test_iterations_count": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "description": "Number of times tests were run before all passed"
+                    },
+                    "llm_usage": {
+                      "type": "object",
+                      "description": "LLM usage metrics (tokens, requests, cost)",
+                      "properties": {
+                        "input_tokens": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "description": "Number of input tokens used"
+                        },
+                        "output_tokens": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "description": "Number of output tokens generated"
+                        },
+                        "total_tokens": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "description": "Total tokens used (input + output)"
+                        },
+                        "requests_count": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "description": "Number of LLM API requests made"
+                        },
+                        "estimated_cost_usd": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Estimated cost in USD"
+                        },
+                        "cost_currency": {
+                          "type": "string",
+                          "default": "USD",
+                          "description": "Currency for cost estimation"
+                        },
+                        "usage_source": {
+                          "type": "string",
+                          "enum": ["tool_reported", "operator_estimated", "unknown"],
+                          "description": "Source of usage data"
+                        }
+                      }
+                    }
+                  }
+                },
+                "acceptance": {
+                  "type": "object",
+                  "description": "API acceptance test results",
+                  "required": ["pass_count", "fail_count", "not_run_count", "passrate"],
+                  "properties": {
+                    "pass_count": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "description": "Number of acceptance tests passed"
+                    },
+                    "fail_count": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "description": "Number of acceptance tests failed"
+                    },
+                    "not_run_count": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "description": "Number of acceptance tests not run"
+                    },
+                    "passrate": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1,
+                      "description": "Pass rate (0.0 to 1.0)"
+                    }
+                  }
+                },
+                "quality_metrics": {
+                  "type": "object",
+                  "description": "API quality assessment metrics",
+                  "properties": {
+                    "determinism_compliance": {
+                      "type": "string",
+                      "enum": ["Pass", "Fail", "Unknown"],
+                      "description": "Determinism compliance status"
+                    },
+                    "overreach_incidents_count": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "description": "Number of overreach incidents"
+                    },
+                    "contract_completeness_passrate": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1,
+                      "description": "Contract completeness pass rate (0.0 to 1.0)"
+                    },
+                    "instructions_quality_rating": {
+                      "type": "integer",
+                      "enum": [100, 70, 40, 0],
+                      "description": "Instructions quality rating"
+                    },
+                    "reproducibility_rating": {
+                      "type": "string",
+                      "enum": ["None", "Minor", "Major", "Unknown"],
+                      "description": "Reproducibility rating"
+                    }
+                  }
+                },
+                "artifacts": {
+                  "type": "object",
+                  "description": "Paths to API implementation artifacts",
+                  "required": [
+                    "contract_artifact_path",
+                    "run_instructions_path"
+                  ],
+                  "properties": {
+                    "contract_artifact_path": {
+                      "type": "string",
+                      "description": "Path to contract artifact file"
+                    },
+                    "run_instructions_path": {
+                      "type": "string",
+                      "description": "Path to run instructions file"
+                    },
+                    "source_code_path": {
+                      "type": "string",
+                      "description": "Path to source code directory"
+                    },
+                    "acceptance_checklist_path": {
+                      "type": "string",
+                      "description": "Path to acceptance checklist"
+                    },
+                    "acceptance_evidence_path": {
+                      "type": "string",
+                      "description": "Path to acceptance evidence"
+                    },
+                    "determinism_evidence_path": {
+                      "type": "string",
+                      "description": "Path to determinism evidence"
+                    },
+                    "overreach_evidence_path": {
+                      "type": "string",
+                      "description": "Path to overreach evidence"
+                    },
+                    "ai_run_report_path": {
+                      "type": "string",
+                      "description": "Path to AI run report"
+                    },
+                    "automated_tests_path": {
+                      "type": "string",
+                      "description": "Path to automated tests"
+                    }
+                  }
+                },
+                "scores": {
+                  "type": "object",
+                  "description": "API scoring metrics",
+                  "properties": {
+                    "correctness_C": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 100,
+                      "description": "Correctness score (0-100)"
+                    },
+                    "reproducibility_R": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 100,
+                      "description": "Reproducibility score (0-100)"
+                    },
+                    "determinism_D": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 100,
+                      "description": "Determinism score (0-100)"
+                    },
+                    "effort_E": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 100,
+                      "description": "Effort score (0-100)"
+                    },
+                    "speed_S": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 100,
+                      "description": "Speed score (0-100)"
+                    },
+                    "contract_docs_K": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 100,
+                      "description": "Contract documentation score (0-100)"
+                    },
+                    "penalty_overreach_PO": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 40,
+                      "description": "Overreach penalty (0-40)"
+                    },
+                    "overall_score": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 100,
+                      "description": "Overall score (0-100)"
+                    }
+                  }
+                }
+              }
+            },
+            "ui": {
+              "type": "object",
+              "description": "Frontend/UI implementation (optional, can be done separately)",
+              "required": [
+                "generation_metrics",
+                "build_success",
+                "artifacts"
+              ],
+              "properties": {
+                "generation_metrics": {
+                  "type": "object",
+                  "description": "UI generation metrics and timing",
+                  "required": [
+                    "llm_model",
+                    "start_timestamp",
+                    "end_timestamp",
+                    "duration_minutes",
+                    "clarifications_count",
+                    "interventions_count",
+                    "reruns_count"
+                  ],
+                  "properties": {
+                    "llm_model": {
+                      "type": "string",
+                      "description": "The LLM model used for this implementation (e.g., 'claude-sonnet-4.5', 'gpt-4', 'claude-opus-3')"
+                    },
+                    "start_timestamp": {
+                      "type": "string",
+                      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{3})?Z$",
+                      "description": "When UI generation started (ISO-8601 UTC)"
+                    },
+                    "end_timestamp": {
+                      "type": "string",
+                      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{3})?Z$",
+                      "description": "When UI generation completed (ISO-8601 UTC)"
+                    },
+                    "duration_minutes": {
+                      "type": "number",
+                      "minimum": 0,
+                      "description": "Duration of UI generation in minutes"
+                    },
+                    "clarifications_count": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "description": "Number of clarification questions asked"
+                    },
+                    "interventions_count": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "description": "Number of manual interventions required"
+                    },
+                    "reruns_count": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "description": "Number of times the run was restarted"
+                    },
+                    "backend_changes_required": {
+                      "type": "boolean",
+                      "description": "Whether UI build required backend changes"
+                    },
+                    "llm_usage": {
+                      "type": "object",
+                      "description": "LLM usage metrics (tokens, requests, cost)",
+                      "properties": {
+                        "input_tokens": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "description": "Number of input tokens used"
+                        },
+                        "output_tokens": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "description": "Number of output tokens generated"
+                        },
+                        "total_tokens": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "description": "Total tokens used (input + output)"
+                        },
+                        "requests_count": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "description": "Number of LLM API requests made"
+                        },
+                        "estimated_cost_usd": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Estimated cost in USD"
+                        },
+                        "cost_currency": {
+                          "type": "string",
+                          "default": "USD",
+                          "description": "Currency for cost estimation"
+                        },
+                        "usage_source": {
+                          "type": "string",
+                          "enum": ["tool_reported", "operator_estimated", "unknown"],
+                          "description": "Source of usage data"
+                        }
+                      }
+                    }
+                  }
+                },
+                "build_success": {
+                  "type": "boolean",
+                  "description": "Whether the UI builds and runs without errors"
+                },
+                "artifacts": {
+                  "type": "object",
+                  "description": "Paths to UI implementation artifacts",
+                  "required": [
+                    "ui_source_path",
+                    "ui_run_summary_path"
+                  ],
+                  "properties": {
+                    "ui_source_path": {
+                      "type": "string",
+                      "description": "Path to UI source code"
+                    },
+                    "ui_run_summary_path": {
+                      "type": "string",
+                      "description": "Path to UI run summary"
+                    },
+                    "run_instructions_path": {
+                      "type": "string",
+                      "description": "Path to run instructions"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "submission": {
+          "type": "object",
+          "description": "Submission metadata",
+          "required": ["submitted_timestamp", "submitted_by", "submission_method"],
+          "properties": {
+            "submitted_timestamp": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{3})?Z$",
+              "description": "When the result was submitted (ISO-8601 UTC)"
+            },
+            "submitted_by": {
+              "type": "string",
+              "description": "Identifier of submitter (username, email, or tool name)"
+            },
+            "submission_method": {
+              "type": "string",
+              "enum": ["automated", "manual"],
+              "description": "How the result was submitted"
+            },
+            "notes": {
+              "type": "string",
+              "description": "Optional notes about the submission"
+            },
+            "github_issue": {
+              "type": "object",
+              "description": "GitHub Issue tracking for automated submission workflow (v3.0)",
+              "required": ["issue_number", "issue_url", "issue_created_at"],
+              "properties": {
+                "issue_number": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "description": "GitHub Issue number"
+                },
+                "issue_url": {
+                  "type": "string",
+                  "description": "Full URL to the GitHub Issue"
+                },
+                "issue_created_at": {
+                  "type": "string",
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{3})?Z$",
+                  "description": "When the GitHub Issue was created (ISO-8601 UTC)"
+                },
+                "issue_closed_at": {
+                  "type": "string",
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{3})?Z$",
+                  "description": "When the GitHub Issue was closed (ISO-8601 UTC, optional)"
+                }
+              }
+            }
+          }
+        },
+        "processing": {
+          "type": "object",
+          "description": "Automated ingestion and processing pipeline status (v3.0)",
+          "properties": {
+            "ingested_timestamp": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{3})?Z$",
+              "description": "When the submission was ingested from GitHub Issue (ISO-8601 UTC)"
+            },
+            "processed_timestamp": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{3})?Z$",
+              "description": "When processing completed successfully (ISO-8601 UTC)"
+            },
+            "validation_status": {
+              "type": "string",
+              "enum": ["pending", "valid", "invalid", "error"],
+              "description": "Status of validation"
+            },
+            "validation_errors": {
+              "type": "array",
+              "description": "List of validation error messages (if validation failed)",
+              "items": {
+                "type": "string"
+              }
+            },
+            "storage_status": {
+              "type": "string",
+              "enum": ["pending", "stored", "failed", "duplicate_replaced"],
+              "description": "Status of storage operation"
+            }
+          }
+        },
+        "storage_metadata": {
+          "type": "object",
+          "description": "Time-partitioned storage and file management information (v3.0)",
+          "properties": {
+            "storage_path": {
+              "type": "string",
+              "description": "Relative path where file is stored (e.g., 'submissions/2025/01/run_id.json')"
+            },
+            "partition_year": {
+              "type": "integer",
+              "description": "Year component for time-partitioned directory"
+            },
+            "partition_month": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 12,
+              "description": "Month component for time-partitioned directory (1-12)"
+            },
+            "file_name": {
+              "type": "string",
+              "description": "Final stored filename (typically '{run_id}.json')"
+            },
+            "stored_at": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{3})?Z$",
+              "description": "Timestamp when file was stored (ISO-8601 UTC)"
+            }
+          }
+        },
+        "validation_metadata": {
+          "type": "object",
+          "description": "Detailed validation tracking and audit trail (v3.0)",
+          "properties": {
+            "validated_at": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{3})?Z$",
+              "description": "When validation was performed (ISO-8601 UTC)"
+            },
+            "validator_version": {
+              "type": "string",
+              "description": "Version of validation script/schema used"
+            },
+            "schema_version_validated": {
+              "type": "string",
+              "description": "Schema version that was validated against (should match schema_version)"
+            },
+            "validation_passed": {
+              "type": "boolean",
+              "description": "Whether validation passed"
+            },
+            "validation_errors_detail": {
+              "type": "array",
+              "description": "Detailed validation errors",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "field_path": {
+                    "type": "string",
+                    "description": "JSON path to the field with error"
+                  },
+                  "error_message": {
+                    "type": "string",
+                    "description": "Human-readable error message"
+                  },
+                  "error_code": {
+                    "type": "string",
+                    "description": "Machine-readable error code"
+                  }
+                },
+                "required": ["field_path", "error_message"]
+              }
+            }
+          }
+        },
+        "aggregation_metadata": {
+          "type": "object",
+          "description": "Leaderboard inclusion and aggregation status tracking (v3.0)",
+          "properties": {
+            "last_aggregated_at": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{3})?Z$",
+              "description": "Timestamp of last successful aggregation run (ISO-8601 UTC)"
+            },
+            "included_in_leaderboard": {
+              "type": "boolean",
+              "description": "Whether this result is included in current leaderboard"
+            },
+            "aggregation_version": {
+              "type": "string",
+              "description": "Version of aggregation script that last processed this result"
+            },
+            "csv_exported": {
+              "type": "boolean",
+              "description": "Whether this result was included in CSV export"
+            },
+            "csv_export_timestamp": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{3})?Z$",
+              "description": "When CSV export last included this result (ISO-8601 UTC)"
+            }
+          }
+        }
+      }
+    }
+  }
+}
+

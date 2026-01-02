@@ -1,0 +1,59 @@
+name: Result Submission
+description: Submit a PawMate AI Challenge benchmark result file
+title: "[Submission] Tool: [tool-name], Model: [A/B], API: [REST/GraphQL], Run: [1/2]"
+labels: ["submission", "results"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## PawMate AI Challenge Result Submission
+        
+        Use this template to submit your benchmark result file. Simply paste your JSON result file below.
+        
+        ### Submission Guidelines
+        
+        - **Result File Format**: Your result file must conform to the [PawMate Result Schema v3.0](schemas/result-schema-v3.0.json) or v2.0
+        - **JSON Validation**: Ensure your JSON is valid and properly formatted
+        - **Required Fields**: Your result must include:
+          - `schema_version` (currently "3.0" or "2.0")
+          - `result_data.run_identity` (all 9 required fields)
+          - `result_data.implementations` (at least one of `api` or `ui`)
+          - `result_data.submission` (submission metadata)
+        
+        ### Title Format
+        
+        Please use the following format for your issue title:
+        ```
+        [Submission] Tool: [tool-name], Model: [A/B], API: [REST/GraphQL], Run: [1/2]
+        ```
+        
+        Example: `[Submission] Tool: Cursor, Model: A, API: REST, Run: 1`
+        
+        ### What Happens Next
+        
+        After submission, your result will be:
+        1. Validated against the schema
+        2. Processed and added to the results database
+        3. Included in comparison reports and leaderboards
+        
+        ---
+        
+  - type: textarea
+    id: result_json
+    attributes:
+      label: Result JSON
+      description: Paste your complete result JSON file here. GitHub will automatically format and syntax-highlight the JSON when the issue is created.
+      placeholder: |
+        {
+          "schema_version": "3.0",
+          "result_data": {
+            "run_identity": {
+              "tool_name": "Your Tool",
+              ...
+            },
+            ...
+          }
+        }
+    validations:
+      required: true
+

@@ -42,7 +42,7 @@ After enabling GitHub Pages:
    ```
    https://<username>.github.io/pawmate-ai-results/
    ```
-   For example: `https://rsdickerson.github.io/pawmate-ai-results/`
+   For example: `https://fastcraft-ai.github.io/pawmate-ai-results/`
 
 **Note**: The site will only be available after the first aggregation run generates `aggregates/leaderboard.json`. See Step 4 for initial data generation.
 

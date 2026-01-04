@@ -146,7 +146,7 @@ After submission:
 1. **Check Script Output**: The script displays the issue URL and number
    ```
    ✓ GitHub Issue created successfully!
-   Issue #123: https://github.com/rsdickerson/pawmate-ai-results/issues/123
+   Issue #123: https://github.com/fastcraft-ai/pawmate-ai-results/issues/123
    ```
 
 2. **Check GitHub Issue**: Visit the issue URL to verify:
@@ -182,7 +182,7 @@ The dashboard is available at:
 https://<username>.github.io/pawmate-ai-results/
 ```
 
-For example: `https://rsdickerson.github.io/pawmate-ai-results/`
+For example: `https://fastcraft-ai.github.io/pawmate-ai-results/`
 
 ### Dashboard Features
 
@@ -308,7 +308,7 @@ HTML reports provide:
 **Error**: "Failed to create GitHub Issue"
 
 **Solutions**:
-- Verify repository exists: `rsdickerson/pawmate-ai-results`
+- Verify repository exists: `fastcraft-ai/pawmate-ai-results`
 - Check token has correct permissions (`repo` scope)
 - Ensure token hasn't been revoked
 - Check network connectivity

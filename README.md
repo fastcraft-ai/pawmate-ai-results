@@ -132,7 +132,7 @@ Use the submission script in the `pawmate-ai-challenge` repository:
 ./scripts/submit_result.sh your-result-file.json
 ```
 
-See the [Submitting Results Guide](https://github.com/rsdickerson/pawmate-ai-challenge/blob/main/docs/Submitting_Results.md) in the challenge repository for detailed instructions.
+See the [Submitting Results Guide](https://github.com/fastcraft-ai/pawmate-ai-challenge/blob/main/docs/Submitting_Results.md) in the challenge repository for detailed instructions.
 
 ### For Maintainers
 

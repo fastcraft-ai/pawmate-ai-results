@@ -43,7 +43,7 @@ After enabling GitHub Pages:
    ```
    https://<username>.github.io/<repository-name>/
    ```
-   For example: `https://rsdickerson.github.io/pawmate-ai-results/`
+   For example: `https://fastcraft-ai.github.io/pawmate-ai-results/`
 
 ## Workflow Triggers
 

@@ -18,8 +18,8 @@ jobs:
     name: Process Benchmark Result Submission
     runs-on: ubuntu-latest
     
-    # Only process issues with 'result-submission' label
-    if: contains(github.event.issue.labels.*.name, 'result-submission')
+    # Only process issues with 'submission' label
+    if: contains(github.event.issue.labels.*.name, 'submission')
     
     steps:
       # Checkout repository

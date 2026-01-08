@@ -1,0 +1,2 @@
+tool_name,tool_version,target_model,api_style,pass_rate,duration_minutes,llm_model,submission_timestamp
+cursor,2.2.43,A,GraphQL,0.000,0.00,ClaudeSonnet4.5,2025-12-26T18:13:57.000Z

@@ -1,0 +1,392 @@
+{
+  "metadata": {
+    "generated_at": "2026-01-08T15:16:47.295084",
+    "version": "1.0",
+    "description": "Aggregated benchmark results with multi-dimensional groupings"
+  },
+  "summary": {
+    "total_submissions": 1,
+    "total_tools": 1,
+    "total_models": 1,
+    "total_api_styles": 1,
+    "unique_submitters": 1,
+    "date_range": {
+      "earliest": "2025-12-26T18:13:57.000Z",
+      "latest": "2025-12-26T18:13:57.000Z"
+    },
+    "schema_versions": [
+      "2.0"
+    ],
+    "tools_list": [
+      "cursor"
+    ],
+    "models_list": [
+      "A"
+    ],
+    "api_styles_list": [
+      "GraphQL"
+    ],
+    "last_aggregation": "2026-01-08T15:16:47.295081"
+  },
+  "groups": {
+    "by_tool": {
+      "cursor": {
+        "entries": [
+          {
+            "tool_name": "cursor",
+            "tool_version": "2.2.43",
+            "run_id": "cursor-ModelA-20251226T1121",
+            "target_model": "A",
+            "api_style": "GraphQL",
+            "run_number": 1,
+            "pass_rate": 0.0,
+            "duration_minutes": 0,
+            "llm_model": "ClaudeSonnet4.5",
+            "submitted_timestamp": "2025-12-26T18:13:57.000Z",
+            "submitted_by": "Scott Dickerson"
+          }
+        ],
+        "statistics": {
+          "group_name": "cursor",
+          "count": 1,
+          "pass_rate": {
+            "avg": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          },
+          "duration": {
+            "avg": 0.0,
+            "min": 0,
+            "max": 0,
+            "total": 0
+          },
+          "submissions": {
+            "total": 1,
+            "unique_submitters": 1
+          },
+          "date_range": {
+            "earliest": "2025-12-26T18:13:57.000Z",
+            "latest": "2025-12-26T18:13:57.000Z"
+          }
+        }
+      }
+    },
+    "by_model": {
+      "A": {
+        "entries": [
+          {
+            "tool_name": "cursor",
+            "tool_version": "2.2.43",
+            "run_id": "cursor-ModelA-20251226T1121",
+            "target_model": "A",
+            "api_style": "GraphQL",
+            "run_number": 1,
+            "pass_rate": 0.0,
+            "duration_minutes": 0,
+            "llm_model": "ClaudeSonnet4.5",
+            "submitted_timestamp": "2025-12-26T18:13:57.000Z",
+            "submitted_by": "Scott Dickerson"
+          }
+        ],
+        "statistics": {
+          "group_name": "A",
+          "count": 1,
+          "pass_rate": {
+            "avg": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          },
+          "duration": {
+            "avg": 0.0,
+            "min": 0,
+            "max": 0,
+            "total": 0
+          },
+          "submissions": {
+            "total": 1,
+            "unique_submitters": 1
+          },
+          "date_range": {
+            "earliest": "2025-12-26T18:13:57.000Z",
+            "latest": "2025-12-26T18:13:57.000Z"
+          }
+        }
+      }
+    },
+    "by_api_style": {
+      "GraphQL": {
+        "entries": [
+          {
+            "tool_name": "cursor",
+            "tool_version": "2.2.43",
+            "run_id": "cursor-ModelA-20251226T1121",
+            "target_model": "A",
+            "api_style": "GraphQL",
+            "run_number": 1,
+            "pass_rate": 0.0,
+            "duration_minutes": 0,
+            "llm_model": "ClaudeSonnet4.5",
+            "submitted_timestamp": "2025-12-26T18:13:57.000Z",
+            "submitted_by": "Scott Dickerson"
+          }
+        ],
+        "statistics": {
+          "group_name": "GraphQL",
+          "count": 1,
+          "pass_rate": {
+            "avg": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          },
+          "duration": {
+            "avg": 0.0,
+            "min": 0,
+            "max": 0,
+            "total": 0
+          },
+          "submissions": {
+            "total": 1,
+            "unique_submitters": 1
+          },
+          "date_range": {
+            "earliest": "2025-12-26T18:13:57.000Z",
+            "latest": "2025-12-26T18:13:57.000Z"
+          }
+        }
+      }
+    },
+    "by_tool_model": {
+      "cursor_A": {
+        "entries": [
+          {
+            "tool_name": "cursor",
+            "tool_version": "2.2.43",
+            "run_id": "cursor-ModelA-20251226T1121",
+            "target_model": "A",
+            "api_style": "GraphQL",
+            "run_number": 1,
+            "pass_rate": 0.0,
+            "duration_minutes": 0,
+            "llm_model": "ClaudeSonnet4.5",
+            "submitted_timestamp": "2025-12-26T18:13:57.000Z",
+            "submitted_by": "Scott Dickerson"
+          }
+        ],
+        "statistics": {
+          "group_name": "cursor_A",
+          "count": 1,
+          "pass_rate": {
+            "avg": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          },
+          "duration": {
+            "avg": 0.0,
+            "min": 0,
+            "max": 0,
+            "total": 0
+          },
+          "submissions": {
+            "total": 1,
+            "unique_submitters": 1
+          },
+          "date_range": {
+            "earliest": "2025-12-26T18:13:57.000Z",
+            "latest": "2025-12-26T18:13:57.000Z"
+          }
+        }
+      }
+    },
+    "by_tool_api": {
+      "cursor_GraphQL": {
+        "entries": [
+          {
+            "tool_name": "cursor",
+            "tool_version": "2.2.43",
+            "run_id": "cursor-ModelA-20251226T1121",
+            "target_model": "A",
+            "api_style": "GraphQL",
+            "run_number": 1,
+            "pass_rate": 0.0,
+            "duration_minutes": 0,
+            "llm_model": "ClaudeSonnet4.5",
+            "submitted_timestamp": "2025-12-26T18:13:57.000Z",
+            "submitted_by": "Scott Dickerson"
+          }
+        ],
+        "statistics": {
+          "group_name": "cursor_GraphQL",
+          "count": 1,
+          "pass_rate": {
+            "avg": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          },
+          "duration": {
+            "avg": 0.0,
+            "min": 0,
+            "max": 0,
+            "total": 0
+          },
+          "submissions": {
+            "total": 1,
+            "unique_submitters": 1
+          },
+          "date_range": {
+            "earliest": "2025-12-26T18:13:57.000Z",
+            "latest": "2025-12-26T18:13:57.000Z"
+          }
+        }
+      }
+    },
+    "by_model_api": {
+      "A_GraphQL": {
+        "entries": [
+          {
+            "tool_name": "cursor",
+            "tool_version": "2.2.43",
+            "run_id": "cursor-ModelA-20251226T1121",
+            "target_model": "A",
+            "api_style": "GraphQL",
+            "run_number": 1,
+            "pass_rate": 0.0,
+            "duration_minutes": 0,
+            "llm_model": "ClaudeSonnet4.5",
+            "submitted_timestamp": "2025-12-26T18:13:57.000Z",
+            "submitted_by": "Scott Dickerson"
+          }
+        ],
+        "statistics": {
+          "group_name": "A_GraphQL",
+          "count": 1,
+          "pass_rate": {
+            "avg": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          },
+          "duration": {
+            "avg": 0.0,
+            "min": 0,
+            "max": 0,
+            "total": 0
+          },
+          "submissions": {
+            "total": 1,
+            "unique_submitters": 1
+          },
+          "date_range": {
+            "earliest": "2025-12-26T18:13:57.000Z",
+            "latest": "2025-12-26T18:13:57.000Z"
+          }
+        }
+      }
+    },
+    "by_tool_model_api": {
+      "cursor_A_GraphQL": {
+        "entries": [
+          {
+            "tool_name": "cursor",
+            "tool_version": "2.2.43",
+            "run_id": "cursor-ModelA-20251226T1121",
+            "target_model": "A",
+            "api_style": "GraphQL",
+            "run_number": 1,
+            "pass_rate": 0.0,
+            "duration_minutes": 0,
+            "llm_model": "ClaudeSonnet4.5",
+            "submitted_timestamp": "2025-12-26T18:13:57.000Z",
+            "submitted_by": "Scott Dickerson"
+          }
+        ],
+        "statistics": {
+          "group_name": "cursor_A_GraphQL",
+          "count": 1,
+          "pass_rate": {
+            "avg": 0.0,
+            "min": 0.0,
+            "max": 0.0
+          },
+          "duration": {
+            "avg": 0.0,
+            "min": 0,
+            "max": 0,
+            "total": 0
+          },
+          "submissions": {
+            "total": 1,
+            "unique_submitters": 1
+          },
+          "date_range": {
+            "earliest": "2025-12-26T18:13:57.000Z",
+            "latest": "2025-12-26T18:13:57.000Z"
+          }
+        }
+      }
+    }
+  },
+  "sorted_views": {
+    "by_quality": [
+      {
+        "tool_name": "cursor",
+        "tool_version": "2.2.43",
+        "run_id": "cursor-ModelA-20251226T1121",
+        "target_model": "A",
+        "api_style": "GraphQL",
+        "run_number": 1,
+        "pass_rate": 0.0,
+        "duration_minutes": 0,
+        "llm_model": "ClaudeSonnet4.5",
+        "submitted_timestamp": "2025-12-26T18:13:57.000Z",
+        "submitted_by": "Scott Dickerson",
+        "composite_score": 0.0
+      }
+    ],
+    "by_speed": [
+      {
+        "tool_name": "cursor",
+        "tool_version": "2.2.43",
+        "run_id": "cursor-ModelA-20251226T1121",
+        "target_model": "A",
+        "api_style": "GraphQL",
+        "run_number": 1,
+        "pass_rate": 0.0,
+        "duration_minutes": 0,
+        "llm_model": "ClaudeSonnet4.5",
+        "submitted_timestamp": "2025-12-26T18:13:57.000Z",
+        "submitted_by": "Scott Dickerson",
+        "composite_score": 0.0
+      }
+    ],
+    "by_composite": [
+      {
+        "tool_name": "cursor",
+        "tool_version": "2.2.43",
+        "run_id": "cursor-ModelA-20251226T1121",
+        "target_model": "A",
+        "api_style": "GraphQL",
+        "run_number": 1,
+        "pass_rate": 0.0,
+        "duration_minutes": 0,
+        "llm_model": "ClaudeSonnet4.5",
+        "submitted_timestamp": "2025-12-26T18:13:57.000Z",
+        "submitted_by": "Scott Dickerson",
+        "composite_score": 0.0
+      }
+    ]
+  },
+  "all_results": [
+    {
+      "tool_name": "cursor",
+      "tool_version": "2.2.43",
+      "run_id": "cursor-ModelA-20251226T1121",
+      "target_model": "A",
+      "api_style": "GraphQL",
+      "run_number": 1,
+      "pass_rate": 0.0,
+      "duration_minutes": 0,
+      "llm_model": "ClaudeSonnet4.5",
+      "submitted_timestamp": "2025-12-26T18:13:57.000Z",
+      "submitted_by": "Scott Dickerson"
+    }
+  ]
+}

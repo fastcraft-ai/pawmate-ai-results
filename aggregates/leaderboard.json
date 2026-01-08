@@ -1,0 +1,88 @@
+{
+  "metadata": {
+    "generated_at": "2026-01-08T15:16:47.294861",
+    "total_results": 1,
+    "sort_options": {
+      "by_quality": {
+        "field": "pass_rate",
+        "direction": "descending",
+        "description": "Sorted by acceptance test pass rate (quality)"
+      },
+      "by_speed": {
+        "field": "duration_minutes",
+        "direction": "ascending",
+        "description": "Sorted by generation duration (speed)"
+      },
+      "by_composite": {
+        "field": "composite_score",
+        "direction": "descending",
+        "description": "Sorted by composite fast+quality score (pass_rate / duration_minutes)"
+      }
+    }
+  },
+  "results": [
+    {
+      "tool_name": "cursor",
+      "tool_version": "2.2.43",
+      "run_id": "cursor-ModelA-20251226T1121",
+      "target_model": "A",
+      "api_style": "GraphQL",
+      "run_number": 1,
+      "pass_rate": 0.0,
+      "duration_minutes": 0,
+      "llm_model": "ClaudeSonnet4.5",
+      "submitted_timestamp": "2025-12-26T18:13:57.000Z",
+      "submitted_by": "Scott Dickerson"
+    }
+  ],
+  "sorted_views": {
+    "by_quality": [
+      {
+        "tool_name": "cursor",
+        "tool_version": "2.2.43",
+        "run_id": "cursor-ModelA-20251226T1121",
+        "target_model": "A",
+        "api_style": "GraphQL",
+        "run_number": 1,
+        "pass_rate": 0.0,
+        "duration_minutes": 0,
+        "llm_model": "ClaudeSonnet4.5",
+        "submitted_timestamp": "2025-12-26T18:13:57.000Z",
+        "submitted_by": "Scott Dickerson",
+        "composite_score": 0.0
+      }
+    ],
+    "by_speed": [
+      {
+        "tool_name": "cursor",
+        "tool_version": "2.2.43",
+        "run_id": "cursor-ModelA-20251226T1121",
+        "target_model": "A",
+        "api_style": "GraphQL",
+        "run_number": 1,
+        "pass_rate": 0.0,
+        "duration_minutes": 0,
+        "llm_model": "ClaudeSonnet4.5",
+        "submitted_timestamp": "2025-12-26T18:13:57.000Z",
+        "submitted_by": "Scott Dickerson",
+        "composite_score": 0.0
+      }
+    ],
+    "by_composite": [
+      {
+        "tool_name": "cursor",
+        "tool_version": "2.2.43",
+        "run_id": "cursor-ModelA-20251226T1121",
+        "target_model": "A",
+        "api_style": "GraphQL",
+        "run_number": 1,
+        "pass_rate": 0.0,
+        "duration_minutes": 0,
+        "llm_model": "ClaudeSonnet4.5",
+        "submitted_timestamp": "2025-12-26T18:13:57.000Z",
+        "submitted_by": "Scott Dickerson",
+        "composite_score": 0.0
+      }
+    ]
+  }
+}

@@ -1060,6 +1060,238 @@ def write_leaderboard_json(leaderboard: dict, output_path: Path) -> None:
         raise
 
 
+def calculate_aggregate_statistics(entries: List[dict], group_name: str) -> dict:
+    """Calculate comprehensive aggregate statistics for a group of entries.
+    
+    Args:
+        entries: List of result entries
+        group_name: Name of the grouping dimension
+    
+    Returns:
+        Dictionary with aggregate statistics
+    """
+    if not entries:
+        return {
+            'count': 0,
+            'pass_rate': {'avg': 0, 'min': 0, 'max': 0},
+            'duration': {'avg': 0, 'min': 0, 'max': 0, 'total': 0},
+            'submissions': {'total': 0, 'unique_submitters': 0},
+            'date_range': {'earliest': None, 'latest': None}
+        }
+    
+    # Extract pass rates
+    pass_rates = [e['pass_rate'] for e in entries if e.get('pass_rate') is not None]
+    
+    # Extract durations
+    durations = [e['duration_minutes'] for e in entries if e.get('duration_minutes') is not None]
+    
+    # Extract submitters
+    submitters = set(e['submitted_by'] for e in entries if e.get('submitted_by'))
+    
+    # Extract timestamps
+    timestamps = [e['submitted_timestamp'] for e in entries if e.get('submitted_timestamp')]
+    
+    # Calculate pass rate statistics
+    pass_rate_stats = {
+        'avg': sum(pass_rates) / len(pass_rates) if pass_rates else 0,
+        'min': min(pass_rates) if pass_rates else 0,
+        'max': max(pass_rates) if pass_rates else 0
+    }
+    
+    # Calculate duration statistics
+    duration_stats = {
+        'avg': sum(durations) / len(durations) if durations else 0,
+        'min': min(durations) if durations else 0,
+        'max': max(durations) if durations else 0,
+        'total': sum(durations) if durations else 0
+    }
+    
+    # Submission counts
+    submission_stats = {
+        'total': len(entries),
+        'unique_submitters': len(submitters)
+    }
+    
+    # Date range
+    date_range = {
+        'earliest': min(timestamps) if timestamps else None,
+        'latest': max(timestamps) if timestamps else None
+    }
+    
+    return {
+        'group_name': group_name,
+        'count': len(entries),
+        'pass_rate': pass_rate_stats,
+        'duration': duration_stats,
+        'submissions': submission_stats,
+        'date_range': date_range
+    }
+
+
+def build_multi_dimensional_groups(entries: List[dict]) -> dict:
+    """Build multi-dimensional groupings for filtering and analysis.
+    
+    Creates groupings by:
+    - tool_name
+    - target_model
+    - api_style
+    - Combinations: tool+model, tool+api, model+api, tool+model+api
+    
+    Args:
+        entries: List of all result entries
+    
+    Returns:
+        Dictionary with grouped data and statistics
+    """
+    groups = {
+        'by_tool': defaultdict(list),
+        'by_model': defaultdict(list),
+        'by_api_style': defaultdict(list),
+        'by_tool_model': defaultdict(list),
+        'by_tool_api': defaultdict(list),
+        'by_model_api': defaultdict(list),
+        'by_tool_model_api': defaultdict(list)
+    }
+    
+    # Group entries
+    for entry in entries:
+        tool = entry.get('tool_name', 'unknown')
+        model = entry.get('target_model', 'unknown')
+        api_style = entry.get('api_style', 'unknown')
+        
+        # Single dimension groups
+        groups['by_tool'][tool].append(entry)
+        groups['by_model'][model].append(entry)
+        groups['by_api_style'][api_style].append(entry)
+        
+        # Two dimension combinations
+        groups['by_tool_model'][f"{tool}_{model}"].append(entry)
+        groups['by_tool_api'][f"{tool}_{api_style}"].append(entry)
+        groups['by_model_api'][f"{model}_{api_style}"].append(entry)
+        
+        # Three dimension combination
+        groups['by_tool_model_api'][f"{tool}_{model}_{api_style}"].append(entry)
+    
+    # Convert defaultdicts to regular dicts and add statistics
+    result = {}
+    for dimension, group_dict in groups.items():
+        result[dimension] = {}
+        for group_key, group_entries in group_dict.items():
+            result[dimension][group_key] = {
+                'entries': group_entries,
+                'statistics': calculate_aggregate_statistics(group_entries, group_key)
+            }
+    
+    return result
+
+
+def generate_summary_metadata(entries: List[dict], results: List[dict]) -> dict:
+    """Generate comprehensive summary metadata for all results.
+    
+    Args:
+        entries: List of leaderboard entries (processed)
+        results: List of raw result dictionaries
+    
+    Returns:
+        Dictionary with summary metadata
+    """
+    if not entries:
+        return {
+            'total_submissions': 0,
+            'total_tools': 0,
+            'total_models': 0,
+            'total_api_styles': 0,
+            'unique_submitters': 0,
+            'date_range': {'earliest': None, 'latest': None},
+            'schema_versions': [],
+            'last_aggregation': datetime.now().isoformat()
+        }
+    
+    # Extract unique values
+    tools = set(e['tool_name'] for e in entries if e.get('tool_name'))
+    models = set(e['target_model'] for e in entries if e.get('target_model'))
+    api_styles = set(e['api_style'] for e in entries if e.get('api_style'))
+    submitters = set(e['submitted_by'] for e in entries if e.get('submitted_by'))
+    
+    # Extract timestamps
+    timestamps = [e['submitted_timestamp'] for e in entries if e.get('submitted_timestamp')]
+    
+    # Extract schema versions from raw results
+    schema_versions = set(r.get('_schema_version', '2.0') for r in results)
+    
+    return {
+        'total_submissions': len(entries),
+        'total_tools': len(tools),
+        'total_models': len(models),
+        'total_api_styles': len(api_styles),
+        'unique_submitters': len(submitters),
+        'date_range': {
+            'earliest': min(timestamps) if timestamps else None,
+            'latest': max(timestamps) if timestamps else None
+        },
+        'schema_versions': sorted(list(schema_versions)),
+        'tools_list': sorted(list(tools)),
+        'models_list': sorted(list(models)),
+        'api_styles_list': sorted(list(api_styles)),
+        'last_aggregation': datetime.now().isoformat()
+    }
+
+
+def build_aggregated_data_structure(entries: List[dict], results: List[dict], sorted_views: dict) -> dict:
+    """Build comprehensive aggregated data structure optimized for web interface.
+    
+    Args:
+        entries: List of all leaderboard entries
+        results: List of raw result dictionaries
+        sorted_views: Dictionary with pre-sorted views
+    
+    Returns:
+        Complete aggregated data structure
+    """
+    # Build multi-dimensional groups
+    groups = build_multi_dimensional_groups(entries)
+    
+    # Generate summary metadata
+    summary = generate_summary_metadata(entries, results)
+    
+    # Build complete structure
+    aggregated_data = {
+        'metadata': {
+            'generated_at': datetime.now().isoformat(),
+            'version': '1.0',
+            'description': 'Aggregated benchmark results with multi-dimensional groupings'
+        },
+        'summary': summary,
+        'groups': groups,
+        'sorted_views': sorted_views,
+        'all_results': entries
+    }
+    
+    return aggregated_data
+
+
+def write_aggregated_data(aggregated_data: dict, output_path: Path) -> None:
+    """Write aggregated data structure to JSON file.
+    
+    Args:
+        aggregated_data: Complete aggregated data structure
+        output_path: Path to output JSON file
+    """
+    # Create output directory if it doesn't exist
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    
+    # Write JSON file with pretty-printing
+    try:
+        with open(output_path, 'w', encoding='utf-8') as f:
+            json.dump(aggregated_data, f, indent=2, ensure_ascii=False)
+        
+        print(f"✓ Generated aggregated data: {output_path}")
+        
+    except IOError as e:
+        print(f"Error writing aggregated data file {output_path}: {e}", file=sys.stderr)
+        raise
+
+
 def main():
     parser = argparse.ArgumentParser(description='Benchmark results aggregation (v2.0 and v3.0 schema support)')
     parser.add_argument('--input-dir', default='results/submitted', help='Input directory')
@@ -1135,6 +1367,21 @@ def main():
         aggregates_dir = repo_root / 'aggregates'
         leaderboard_output_path = aggregates_dir / 'leaderboard.json'
         write_leaderboard_json(leaderboard_json, leaderboard_output_path)
+        
+        # Generate comprehensive aggregated data for web interface
+        aggregated_data = build_aggregated_data_structure(leaderboard_entries, results, sorted_views)
+        aggregated_output_path = aggregates_dir / 'aggregated_data.json'
+        write_aggregated_data(aggregated_data, aggregated_output_path)
+        
+        # Print summary statistics
+        print(f"\n📊 Aggregation Summary:")
+        print(f"  Total Submissions: {aggregated_data['summary']['total_submissions']}")
+        print(f"  Unique Tools: {aggregated_data['summary']['total_tools']}")
+        print(f"  Models Tested: {aggregated_data['summary']['total_models']}")
+        print(f"  API Styles: {aggregated_data['summary']['total_api_styles']}")
+        print(f"  Unique Submitters: {aggregated_data['summary']['unique_submitters']}")
+        if aggregated_data['summary']['date_range']['earliest']:
+            print(f"  Date Range: {aggregated_data['summary']['date_range']['earliest']} to {aggregated_data['summary']['date_range']['latest']}")
     else:
         print("No data available for leaderboard generation", file=sys.stderr)
 

@@ -1,0 +1,306 @@
+name: Process Result Submission
+
+# Trigger on issue creation
+on:
+  issues:
+    types: [opened]
+
+# Required permissions for workflow
+permissions:
+  contents: write        # To commit and push generated files
+  issues: write          # To comment on issues with validation results
+  pages: write           # To deploy to GitHub Pages (if needed)
+  id-token: write        # For GitHub Pages deployment
+
+jobs:
+  process-submission:
+    name: Process Benchmark Result Submission
+    runs-on: ubuntu-latest
+    
+    # Only process issues with 'result-submission' label
+    if: contains(github.event.issue.labels.*.name, 'result-submission')
+    
+    steps:
+      # Checkout repository
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for proper commits
+      
+      # Set up Python environment
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      # Install dependencies
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install jsonschema
+      
+      # Step 2: Extract and ingest result from issue
+      - name: Extract and ingest result from issue
+        id: ingest
+        env:
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_URL: ${{ github.event.issue.html_url }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_USER: ${{ github.event.issue.user.login }}
+          ISSUE_CREATED_AT: ${{ github.event.issue.created_at }}
+        run: |
+          echo "🔍 Extracting result JSON from issue..."
+          
+          # Create temporary GitHub event JSON
+          cat > /tmp/github_event.json <<EOF
+          {
+            "issue": {
+              "number": $ISSUE_NUMBER,
+              "html_url": "$ISSUE_URL",
+              "title": "$ISSUE_TITLE",
+              "user": {
+                "login": "$ISSUE_USER"
+              },
+              "created_at": "$ISSUE_CREATED_AT",
+              "body": $(echo "$ISSUE_BODY" | jq -Rs .)
+            }
+          }
+          EOF
+          
+          # Run ingest-issue.py
+          python3 scripts/ingest-issue.py --file /tmp/github_event.json --output-dir results/submitted > /tmp/ingest_output.json
+          
+          # Capture exit code
+          INGEST_EXIT_CODE=$?
+          
+          # Parse output
+          INGEST_SUCCESS=$(jq -r '.success' /tmp/ingest_output.json)
+          FILENAME=$(jq -r '.filename.constructed // empty' /tmp/ingest_output.json)
+          FILE_PATH=$(jq -r '.file_save.file_path // empty' /tmp/ingest_output.json)
+          ERROR_MSG=$(jq -r '.error // empty' /tmp/ingest_output.json)
+          
+          # Set outputs
+          echo "success=$INGEST_SUCCESS" >> $GITHUB_OUTPUT
+          echo "filename=$FILENAME" >> $GITHUB_OUTPUT
+          echo "filepath=$FILE_PATH" >> $GITHUB_OUTPUT
+          echo "error=$ERROR_MSG" >> $GITHUB_OUTPUT
+          
+          # Display results
+          if [ "$INGEST_SUCCESS" = "true" ]; then
+            echo "✅ Successfully extracted and saved result file: $FILENAME"
+            echo "   File saved to: $FILE_PATH"
+          else
+            echo "❌ Ingestion failed: $ERROR_MSG"
+            exit 1
+          fi
+      
+      # Step 3: Validate result file
+      - name: Validate result file
+        id: validate
+        if: steps.ingest.outcome == 'success'
+        run: |
+          echo "🔍 Validating result file against schema..."
+          
+          RESULT_FILE="${{ steps.ingest.outputs.filepath }}"
+          
+          if [ -z "$RESULT_FILE" ] || [ ! -f "$RESULT_FILE" ]; then
+            echo "❌ Result file not found: $RESULT_FILE"
+            echo "valid=false" >> $GITHUB_OUTPUT
+            echo "error=Result file not found" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+          
+          # Run validation
+          python3 scripts/validate_result.py "$RESULT_FILE" --output json > /tmp/validation_output.json
+          
+          # Capture exit code
+          VALIDATION_EXIT_CODE=$?
+          
+          # Parse validation results
+          VALID=$(jq -r '.valid' /tmp/validation_output.json)
+          ERROR_COUNT=$(jq -r '.error_count' /tmp/validation_output.json)
+          
+          # Set outputs
+          echo "valid=$VALID" >> $GITHUB_OUTPUT
+          echo "error_count=$ERROR_COUNT" >> $GITHUB_OUTPUT
+          
+          # Save full validation output for comment
+          cat /tmp/validation_output.json > /tmp/validation_result.json
+          
+          # Display results
+          if [ "$VALID" = "true" ]; then
+            echo "✅ Validation passed!"
+          else
+            echo "❌ Validation failed with $ERROR_COUNT error(s)"
+            # Extract error messages for display
+            jq -r '.errors[] | "  - [\(.field_path)] \(.message)"' /tmp/validation_output.json
+            exit 1
+          fi
+      
+      # Step 4: Generate aggregated data and leaderboard
+      - name: Generate aggregated data and leaderboard
+        id: aggregate
+        if: steps.validate.outcome == 'success'
+        run: |
+          echo "📊 Generating aggregated data and leaderboard..."
+          
+          # Run aggregation script
+          python3 scripts/aggregate_results.py --input-dir results/submitted --output-dir results/compiled
+          
+          # Verify output files were created
+          AGGREGATED_DATA="aggregates/aggregated_data.json"
+          LEADERBOARD="aggregates/leaderboard.json"
+          CSV_EXPORT="aggregates/results.csv"
+          
+          if [ ! -f "$AGGREGATED_DATA" ]; then
+            echo "❌ Aggregated data file not created: $AGGREGATED_DATA"
+            echo "success=false" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+          
+          if [ ! -f "$LEADERBOARD" ]; then
+            echo "❌ Leaderboard file not created: $LEADERBOARD"
+            echo "success=false" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+          
+          if [ ! -f "$CSV_EXPORT" ]; then
+            echo "❌ CSV export file not created: $CSV_EXPORT"
+            echo "success=false" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+          
+          # Count HTML reports
+          HTML_COUNT=$(find results/compiled -name "*.html" | wc -l)
+          
+          echo "success=true" >> $GITHUB_OUTPUT
+          echo "html_reports=$HTML_COUNT" >> $GITHUB_OUTPUT
+          
+          echo "✅ Aggregation complete!"
+          echo "   Generated: aggregated_data.json, leaderboard.json, results.csv"
+          echo "   HTML reports: $HTML_COUNT"
+      
+      # Step 5: Commit and push generated files
+      - name: Commit and push generated files
+        id: commit
+        if: steps.aggregate.outcome == 'success'
+        run: |
+          echo "💾 Committing and pushing generated files..."
+          
+          # Configure git
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Add all generated and updated files
+          git add results/submitted/*.json
+          git add aggregates/aggregated_data.json
+          git add aggregates/leaderboard.json
+          git add aggregates/results.csv
+          git add results/compiled/*.html
+          
+          # Check if there are changes to commit
+          if git diff --staged --quiet; then
+            echo "⚠️  No changes to commit"
+            echo "committed=false" >> $GITHUB_OUTPUT
+          else
+            # Commit with descriptive message
+            ISSUE_NUM="${{ github.event.issue.number }}"
+            FILENAME="${{ steps.ingest.outputs.filename }}"
+            
+            git commit -m "chore: process result submission from issue #$ISSUE_NUM
+
+- Added result file: $FILENAME
+- Updated aggregated data and leaderboard
+- Regenerated CSV export and HTML reports
+
+Automated processing by GitHub Actions"
+            
+            # Push to main branch
+            git push origin main
+            
+            echo "committed=true" >> $GITHUB_OUTPUT
+            echo "✅ Changes committed and pushed to main branch"
+          fi
+      
+      # Comment on issue with processing results
+      - name: Comment on issue with processing results
+        if: always()
+        uses: actions/github-script@v7
+        env:
+          INGEST_SUCCESS: ${{ steps.ingest.outputs.success }}
+          FILENAME: ${{ steps.ingest.outputs.filename }}
+          INGEST_ERROR: ${{ steps.ingest.outputs.error }}
+          VALID: ${{ steps.validate.outputs.valid }}
+          ERROR_COUNT: ${{ steps.validate.outputs.error_count }}
+          AGGREGATE_SUCCESS: ${{ steps.aggregate.outputs.success }}
+          HTML_REPORTS: ${{ steps.aggregate.outputs.html_reports }}
+          COMMITTED: ${{ steps.commit.outputs.committed }}
+        with:
+          script: |
+            const issueNumber = context.issue.number;
+            const ingestSuccess = process.env.INGEST_SUCCESS === 'true';
+            const valid = process.env.VALID === 'true';
+            const aggregateSuccess = process.env.AGGREGATE_SUCCESS === 'true';
+            const committed = process.env.COMMITTED === 'true';
+            
+            let comment = '## 🤖 Automated Processing Results\n\n';
+            
+            // Ingestion status
+            comment += '### 📥 Ingestion\n';
+            if (ingestSuccess) {
+              comment += `✅ **Success** - Extracted and saved result file: \`${process.env.FILENAME}\`\n\n`;
+            } else {
+              comment += `❌ **Failed** - ${process.env.INGEST_ERROR || 'Unknown error during ingestion'}\n\n`;
+              comment += '**Next Steps:** Please check that your issue contains valid JSON in a code block.\n\n';
+            }
+            
+            // Validation status (if ingestion succeeded)
+            if (ingestSuccess) {
+              comment += '### ✅ Validation\n';
+              if (valid) {
+                comment += '✅ **Passed** - Result file is valid according to schema v3.0\n\n';
+              } else {
+                comment += `❌ **Failed** - Found ${process.env.ERROR_COUNT || '0'} validation error(s)\n\n`;
+                comment += '**Next Steps:** Please fix the validation errors and resubmit.\n\n';
+              }
+            }
+            
+            // Aggregation status (if validation passed)
+            if (valid && aggregateSuccess) {
+              comment += '### 📊 Aggregation\n';
+              comment += `✅ **Success** - Generated aggregated data, leaderboard, and ${process.env.HTML_REPORTS || '0'} HTML report(s)\n\n`;
+            }
+            
+            // Commit status (if aggregation succeeded)
+            if (aggregateSuccess) {
+              comment += '### 💾 Repository Update\n';
+              if (committed) {
+                comment += '✅ **Committed** - All generated files have been pushed to the repository\n\n';
+                comment += '**View Results:**\n';
+                comment += `- [Leaderboard](../../blob/main/aggregates/leaderboard.json)\n`;
+                comment += `- [Aggregated Data](../../blob/main/aggregates/aggregated_data.json)\n`;
+                comment += `- [CSV Export](../../blob/main/aggregates/results.csv)\n`;
+              } else {
+                comment += '⚠️ **No changes** - Files were generated but no changes to commit\n\n';
+              }
+            }
+            
+            // Overall status
+            comment += '\n---\n\n';
+            if (committed) {
+              comment += '✅ **Processing Complete** - Your submission has been successfully processed and added to the benchmark results!\n';
+            } else if (!ingestSuccess) {
+              comment += '❌ **Processing Failed** - Could not extract valid JSON from issue\n';
+            } else if (!valid) {
+              comment += '❌ **Processing Failed** - Validation errors found\n';
+            } else {
+              comment += '⚠️ **Processing Incomplete** - See details above\n';
+            }
+            
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              body: comment
+            });

@@ -1,5 +1,6 @@
 name: Process Result Submission
 
+# Automated workflow to process benchmark result submissions from GitHub Issues
 # Trigger on issue creation
 on:
   issues:

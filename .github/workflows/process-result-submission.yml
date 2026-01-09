@@ -4,7 +4,10 @@ name: Process Result Submission
 # Trigger on issue creation
 on:
   issues:
-    types: [opened]
+    types:
+      - opened
+      - labeled
+
 
 # Required permissions for workflow
 permissions:
@@ -18,10 +21,19 @@ jobs:
     name: Process Benchmark Result Submission
     runs-on: ubuntu-latest
     
-    # Only process issues with 'submission' label
-    if: contains(github.event.issue.labels.*.name, 'submission')
-    
+    # # Only process issues with 'submission' label
+    # if: >
+    #   github.event.label.name == 'submission' ||
+    #   contains(github.event.issue.labels.*.name, 'submission')
+
     steps:
+      - name: Check submission label
+        if: >
+          !contains(github.event.issue.labels.*.name, 'submission')
+        run: |
+          echo "Issue does not contain submission label"
+          exit 1
+
       # Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -39,7 +51,9 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install jsonschema
-      
+      - name: Install system dependencies
+        run: sudo apt-get update && sudo apt-get install -y jq
+        
       # Step 2: Extract and ingest result from issue
       - name: Extract and ingest result from issue
         id: ingest
